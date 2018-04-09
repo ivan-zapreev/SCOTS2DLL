@@ -68,7 +68,7 @@ namespace tud {
                      * Allows to get the input dof index
                      * @return the input dof index
                      */
-                    inline const int & get_ipt_dof_idx() const {
+                    inline const int & get_dof_idx() const {
                         return m_ipt_dof_idx;
                     }
 

@@ -35,6 +35,7 @@
 #include <limits>
 #include <vector>
 #include <utility>
+#include <ctime>
 
 #define PI 3.14159265
 
@@ -84,11 +85,17 @@ namespace tud {
                     //Stores the log file
                     ofstream m_log_file;
                     //Stores the CUDD manager
-                    Cudd * m_p_cudd_mgr;
+                    Cudd * m_p_cudd;
                     //Stores the BDD of the controller
-                    BDD * m_p_bdd;
+                    BDD * m_p_ctrl_bdd;
+                    //Stores the inputs manager
+                    inputs_mgr * m_p_is_mgr;
+                    //Stores the states manager
+                    states_mgr * m_p_ss_mgr;
                     //Stores the Symbolic set of the controller
                     SymbolicSet * m_p_ctr;
+                    //Stores the unfit states BDD of the controller
+                    BDD m_unfit_bdd;
                     //Stores the state-space size
                     int m_ss_dim;
                     //Stores the input-space size
@@ -147,8 +154,8 @@ namespace tud {
                                 cursor += m_is_dim;
                             }
                         } else {
-                            m_log_file << "ERROR: Individual control value is: "
-                                    << ctr_value << " \n" << std::flush;
+                            *this << "ERROR: Individual control value is: "
+                            << ctr_value << " \n" << std::flush;
                             result = false;
                         }
                         return result;
@@ -229,15 +236,17 @@ namespace tud {
                                 ++state_idx;
                             } else {
                                 //The value is off so it makes no sense to proceed
-                                m_log_file << "ERROR: Individual input value is: "
-                                        << ctr_value << " \n" << std::flush;
+                                *this << "ERROR: Dof " << wrap.get_dof_idx()
+                                        << " individual: " << wrap.get_name()
+                                        << " input value is: " << ctr_value
+                                        << " \n" << std::flush;
                                 delete[] inputs;
                                 return;
                             }
                         }
 
                         //Get the dof index relative to the largest state dof index
-                        const int is_dof_idx = wrap.get_ipt_dof_idx();
+                        const int is_dof_idx = wrap.get_dof_idx();
                         //Initialize the priority queue for safe computations
                         scores_queue part_scores;
                         //Get the original controller min/max values
@@ -302,7 +311,7 @@ namespace tud {
                     void compute_fitness_plain(JNIEnv * env, ctrl_wrapper & wrap,
                             double & exact_ftn, double & req_ftn) {
                         //Get the dof index relative to the largest state dof index
-                        const int is_dof_idx = wrap.get_ipt_dof_idx();
+                        const int is_dof_idx = wrap.get_dof_idx();
                         //Re-set the values to zero first
                         double exact_score = 0.0;
                         double part_score = 0.0;
@@ -342,16 +351,58 @@ namespace tud {
                     }
 
                     /**
+                     * Allows to store the unfit points into a BDD.
+                     * @param env the JNI environment
+                     * @param wrap the controller's wrapper
+                     */
+                    void add_unfit_points_to_bdd(JNIEnv * env, ctrl_wrapper & wrap) {
+                        //Get the dof index relative to the largest state dof index
+                        const int is_dof_idx = wrap.get_dof_idx();
+                        //The variables to store the number of fit and unfit points
+                        long total = 0.0, unfit = 0.0;
+
+                        //Define the cursor
+                        double const * cursor = &m_all_data[0];
+                        abs_type state_abs[m_ss_dim];
+                        while (cursor < m_cursor_max) {
+                            //Compute the state error
+                            double delta_err = DBL_MAX;
+                            const double ctr_value = wrap.compute_input(cursor, m_ss_dim);
+                            double const * state_dbl = cursor;
+                            //If there are nun of inf values or the error delta is
+                            //larger than the maximum then this point is not fit.
+                            if (!compute_state_error(ctr_value, is_dof_idx, cursor, delta_err)
+                                    || (delta_err >= MAX_ATTRACTOR_SIZE)) {
+                                //Copy the values into the state array
+                                for (int idx = 0; idx < m_ss_dim; ++idx) {
+                                    state_abs[idx] = *state_dbl;
+                                    ++state_dbl;
+                                }
+
+                                //Convert the abstract state to BDD and add to the total
+                                m_unfit_bdd = m_unfit_bdd | m_p_ss_mgr->x_to_bdd(state_abs);
+
+                                //Increment the number of unfit points
+                                ++unfit;
+                            }
+                            //Increment the number of fit points
+                            ++total;
+                        }
+
+                        *this << "The number of unfit points for dof "
+                        << wrap.get_dof_idx() << " is " << unfit
+                                << "/" << total << "\n" << std::flush;
+                    }
+
+                    /**
                      * Allows to convert the points array into the internal data structures
                      * @param num_pg the number of points in the array
                      * @param arr_gp the points array
                      * @return the number of states
                      */
                     abs_type convert_points_to_data() {
-                        //Initialize the input and states manager
-                        inputs_mgr is_mgr(*m_p_ctr, m_ss_dim);
-                        states_mgr ss_mgr(*m_p_ctr, m_ss_dim, *m_p_bdd,
-                                *m_p_cudd_mgr, is_mgr.get_inputs_set());
+                        //Initialize the inputs and states managers
+                        initialize_managers();
 
                         //Initialize the min-max pairs
                         m_min_max.clear();
@@ -360,7 +411,7 @@ namespace tud {
                         }
 
                         //Get the number the states with inputs
-                        raw_data all_states = ss_mgr.get_points();
+                        raw_data all_states = m_p_ss_mgr->get_points();
                         const int num_states = all_states.size() / m_ss_dim;
                         raw_data state(m_ss_dim), input(m_is_dim);
                         abs_data astate(m_ss_dim), ainput(m_is_dim);
@@ -373,10 +424,10 @@ namespace tud {
                             state.assign(state_begin, state_begin + m_ss_dim);
 
                             //Get the list of inputs
-                            raw_data state_inputs = m_p_ctr->restriction(*m_p_cudd_mgr, *m_p_bdd, state);
+                            raw_data state_inputs = m_p_ctr->restriction(*m_p_cudd, *m_p_ctrl_bdd, state);
 
                             //Convert state to abstract state and add to data
-                            ss_mgr.xtois(state, astate);
+                            m_p_ss_mgr->xtois(state, astate);
                             m_all_data.insert(m_all_data.end(), astate.begin(), astate.end());
 
                             //Get the number of inputs and add to the data
@@ -390,7 +441,7 @@ namespace tud {
                                 input.assign(input_begin, input_begin + m_is_dim);
 
                                 //Convert state to abstract state and add to data
-                                is_mgr.xtois(input, ainput);
+                                m_p_is_mgr->xtois(input, ainput);
                                 m_all_data.insert(m_all_data.end(), ainput.begin(), ainput.end());
 
                                 //Compute the min and max values per input dimension
@@ -422,6 +473,21 @@ namespace tud {
                     }
 
                     /**
+                     * Allows to re-initialize the inputs and states managers
+                     */
+                    void initialize_managers() {
+                        //Delete any previously present managers
+                        if (m_p_ss_mgr) delete m_p_ss_mgr;
+                        if (m_p_is_mgr) delete m_p_is_mgr;
+
+                        //Initialize the input and state manager
+                        m_p_is_mgr = new inputs_mgr(*m_p_ctr, m_ss_dim);
+                        m_p_ss_mgr = new states_mgr(*m_p_ctr, m_ss_dim,
+                                *m_p_ctrl_bdd, *m_p_cudd,
+                                m_p_is_mgr->get_inputs_set());
+                    }
+
+                    /**
                      * Allows to set the state-space size
                      * NOT thread safe!
                      * @param env the JNI environment
@@ -440,10 +506,10 @@ namespace tud {
                                 m_is_dim = (m_p_ctr->get_dim() - m_ss_dim);
                                 //Clear the old data
                                 m_all_data.clear();
-                                m_log_file << "Start extracting grid points\n" << std::flush;
+                                *this << "Start extracting grid points\n" << std::flush;
                                 //Convert the points into the internal data structures
                                 m_num_states = convert_points_to_data();
-                                m_log_file << "The state-space size is = " << m_num_states << " \n" << std::flush;
+                                *this << "The state-space size is = " << m_num_states << " \n" << std::flush;
                             }
                         }
                     }
@@ -556,11 +622,13 @@ namespace tud {
                 public:
 
                     ftn_computer() :
-                    m_log_file(), m_p_cudd_mgr(NULL), m_p_bdd(NULL),
-                    m_p_ctr(NULL), m_ss_dim(0), m_is_dim(0), m_num_states(0),
-                    m_all_data(), m_cursor_max(NULL), m_attr_size(0.0),
-                    m_min_max(), m_is_scale(false), m_ftn_type(UNDEF_FITNESS),
-                    m_is_complex(true), m_ftn_scale(1.0) {
+                    m_log_file(), m_p_cudd(NULL), m_p_ctrl_bdd(NULL),
+                    m_p_ctr(NULL), m_unfit_bdd(), m_p_is_mgr(NULL),
+                    m_p_ss_mgr(NULL), m_ss_dim(0), m_is_dim(0),
+                    m_num_states(0), m_all_data(), m_cursor_max(NULL),
+                    m_attr_size(0.0), m_min_max(), m_is_scale(false),
+                    m_ftn_type(UNDEF_FITNESS), m_is_complex(true),
+                    m_ftn_scale(1.0) {
                     }
 
                     /**
@@ -570,33 +638,50 @@ namespace tud {
                      * @param file_name the file name
                      * @return the controller dimensions
                      */
-                    int load(JNIEnv * const env, jstring file_name) {
-                        //Create a new CUDD manager
-                        m_p_cudd_mgr = new Cudd();
-                        //Disable automatic variable ordering
-                        m_p_cudd_mgr->AutodynDisable();
-                        //Make a new symbolic set
-                        m_p_ctr = new SymbolicSet();
-                        //Make a new BDD
-                        m_p_bdd = new BDD();
-
+                    int load(JNIEnv * const env, const char * file_name) {
                         //Read controller from file
-                        const char *file_name_jni = env->GetStringUTFChars(file_name, 0);
+                        string log_file_name = string(file_name) + ".sr.log";
 
-                        //Open the log file
-                        m_log_file.open(string(file_name_jni) + ".sr.log");
+                        //(Re-)Open the log file
+                        if (m_log_file.is_open()) {
+                            m_log_file.close();
+                        }
+                        m_log_file.open(log_file_name);
                         m_log_file.clear();
 
-                        m_log_file << "Start loading: " << file_name_jni << "\n" << std::flush;
+                        *this << "Opened the log-file: " << log_file_name
+                                << "\n" << std::flush;
+
+                        //Read controller from file
+                        *this << "Start initializing data structures\n" << std::flush;
+
+                        //De-couple the BDD from the CUDD manager
+                        m_unfit_bdd = BDD();
+
+                        //Make a new BDD
+                        if (m_p_ctrl_bdd) delete m_p_ctrl_bdd;
+                        m_p_ctrl_bdd = new BDD();
+
+                        //Make a new symbolic set
+                        if (m_p_ctr) delete m_p_ctr;
+                        m_p_ctr = new SymbolicSet();
+
+                        //Create a new CUDD manager
+                        if (m_p_cudd) delete m_p_cudd;
+                        m_p_cudd = new Cudd();
+
+                        //Disable automatic variable ordering
+                        m_p_cudd->AutodynDisable();
+
+                        //Read controller from file
+                        *this << "Start loading the controller: " << file_name << "\n" << std::flush;
 
                         //Load the controller
                         bool is_fail = false;
-                        if (!read_from_file(*m_p_cudd_mgr, *m_p_ctr, *m_p_bdd, file_name_jni)) {
+                        if (!read_from_file(*m_p_cudd, *m_p_ctr, *m_p_ctrl_bdd, file_name)) {
                             is_fail = true;
                         }
-                        m_log_file << "Loading: " << file_name_jni << " is finished \n" << std::flush;
-
-                        env->ReleaseStringUTFChars(file_name, file_name_jni);
+                        *this << "Loading: " << file_name << " is finished \n" << std::flush;
 
                         //Throw if could not load otherwise extract the bdd data
                         if (is_fail) {
@@ -628,6 +713,56 @@ namespace tud {
                     }
 
                     /**
+                     * Allows to start the unfit points export by re-setting
+                     * the internal data storage for the unfit points
+                     * @param env the environment
+                     */
+                    void start_unfit_export(JNIEnv * env) {
+                        *this << "Starting unfit points export\n" << std::flush;
+                        m_unfit_bdd = m_p_cudd->bddZero();
+                    }
+
+                    /**
+                     * Allows to add the unfit points of this individual into
+                     * the unfit points to be exported into the BDD
+                     * @param env the JNI environment
+                     * @param wrap the controller wrapper
+                     */
+                    void compute_unfit_points(JNIEnv * env, ctrl_wrapper & wrap) {
+                        *this << "Starting unfit points export of " << wrap.get_name()
+                                << " for dof " << wrap.get_dof_idx() << " \n" << std::flush;
+                        if (m_p_ctr != NULL) {
+                            if (m_ss_dim > 0) {
+                                const int dof_idx = wrap.get_dof_idx();
+                                if ((dof_idx >= 0) && (dof_idx < (m_p_ctr->get_dim() - m_ss_dim))) {
+                                    add_unfit_points_to_bdd(env, wrap);
+                                } else {
+                                    (void) throwException(env, IllegalArgumentException,
+                                            "Improper input space dimension index!");
+                                }
+                            } else {
+                                (void) throwException(env, IllegalStateException,
+                                        "The state-space size is not set!");
+                            }
+                        } else {
+                            (void) throwException(env, IllegalStateException,
+                                    "The controller is not loaded yet!");
+                        }
+                    }
+
+                    /**
+                     * Allows to store the collected so-far unfit points into the BDD.
+                     * @param env the JNI environment
+                     * @param file_name the BDD file name
+                     */
+                    void finish_unfit_export(JNIEnv * env, const char * file_name) {
+                        *this << "Dumping unfit points into " << file_name << "\n" << std::flush;
+                        store_controller(*m_p_cudd,
+                                m_p_ss_mgr->get_states_set(),
+                                m_unfit_bdd, string(file_name));
+                    }
+
+                    /**
                      * Allows to compute fitness of the given controller wrapper
                      * @param env the JNI environment
                      * @param wrap the controller wrapper
@@ -641,7 +776,7 @@ namespace tud {
                             double & scale, double & shift) {
                         if (m_p_ctr != NULL) {
                             if (m_ss_dim > 0) {
-                                const int dof_idx = wrap.get_ipt_dof_idx();
+                                const int dof_idx = wrap.get_dof_idx();
                                 if ((dof_idx >= 0) && (dof_idx < (m_p_ctr->get_dim() - m_ss_dim))) {
                                     if (m_is_complex) {
                                         compute_fitness<true>(env, wrap, exact_ftn, req_ftn, scale, shift);
@@ -672,17 +807,28 @@ namespace tud {
                         if (m_p_ctr) {
                             delete m_p_ctr;
                         }
-                        if (m_p_bdd) {
-                            delete m_p_bdd;
+                        if (m_p_ctrl_bdd) {
+                            delete m_p_ctrl_bdd;
                         }
-                        if (m_p_cudd_mgr) {
-                            delete m_p_cudd_mgr;
+                        if (m_p_ss_mgr) {
+                            delete m_p_ss_mgr;
+                        }
+                        if (m_p_is_mgr) {
+                            delete m_p_is_mgr;
+                        }
+                        //De-couple the BDD from the cudd manager
+                        m_unfit_bdd = BDD();
+                        if (m_p_cudd) {
+                            delete m_p_cudd;
                         }
                     }
                 };
 
                 ostream& operator<<(ftn_computer& strm, const char * str) {
-                    return strm.m_log_file << str;
+                    time_t now = time(0);
+                    string time(ctime(&now));
+                    time = time.substr(0, time.length() - 1);
+                    return strm.m_log_file << time << "\b: " << str;
                 }
             }
         }

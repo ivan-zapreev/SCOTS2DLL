@@ -52,8 +52,13 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_load
     }
     //Instantiate the new fitness computer
     m_p_ftn_comp = new ftn_computer();
+
     //Load the controller
-    return m_p_ftn_comp->load(env, file_name);
+    const char *file_name_c = env->GetStringUTFChars(file_name, 0);
+    const int result = m_p_ftn_comp->load(env, file_name_c);
+    env->ReleaseStringUTFChars(file_name, file_name_c);
+
+    return result;
 }
 
 JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
@@ -64,10 +69,10 @@ JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 
 static jobject compute_fitness(JNIEnv * env, jstring pclass_name, jint ipt_dof_idx) {
     double exact_ftn = 0.0, req_ftn = 0.0, scale = 1.0, shift = 0.0;
-    const char *pname_jni = env->GetStringUTFChars(pclass_name, 0);
-    string pn_local(pname_jni);
-    jclass ind_class = env->FindClass(pname_jni);
-    env->ReleaseStringUTFChars(pclass_name, pname_jni);
+    const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
+    string pn_local(pname_c);
+    jclass ind_class = env->FindClass(pname_c);
+    env->ReleaseStringUTFChars(pclass_name, pname_c);
     if (ind_class != NULL) {
         ctrl_wrapper wrapper(env, ind_class, pn_local, ipt_dof_idx);
         m_p_ftn_comp->compute(env, wrapper, exact_ftn, req_ftn, scale, shift);
@@ -88,3 +93,31 @@ JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitn
 (JNIEnv * env, jclass, jstring person_name, jint ipt_dof_idx) {
     return compute_fitness(env, person_name, ipt_dof_idx);
 }
+
+JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_start_1unfit_1export
+(JNIEnv * env, jclass) {
+    m_p_ftn_comp->start_unfit_export(env);
+}
+
+JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_export_1unfit_1points
+(JNIEnv * env, jclass, jstring pclass_name, jint ipt_dof_idx) {
+    const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
+    string pn_local(pname_c);
+    jclass ind_class = env->FindClass(pname_c);
+    env->ReleaseStringUTFChars(pclass_name, pname_c);
+    if (ind_class != NULL) {
+        ctrl_wrapper wrapper(env, ind_class, pn_local, ipt_dof_idx);
+        m_p_ftn_comp->compute_unfit_points(env, wrapper);
+    } else {
+        (void) throwException(env, ClassNotFoundException,
+                "The requested individual is not found!");
+    }
+}
+
+JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_finish_1unfit_1export
+(JNIEnv * env, jclass, jstring file_name) {
+    const char *file_name_c = env->GetStringUTFChars(file_name, 0);
+    m_p_ftn_comp->finish_unfit_export(env, file_name_c);
+    env->ReleaseStringUTFChars(file_name, file_name_c);
+}
+
