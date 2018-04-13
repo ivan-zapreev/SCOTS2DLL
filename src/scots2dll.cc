@@ -63,7 +63,7 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_load
 
 JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 (JNIEnv * env, jclass, jobject cfg) {
-    (*m_p_ftn_comp) << "Start configuring the object\n" << std::flush;
+    (*m_p_ftn_comp) << "Start configuring the object";
     m_p_ftn_comp->configure(env, cfg);
 }
 

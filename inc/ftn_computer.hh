@@ -154,8 +154,7 @@ namespace tud {
                                 cursor += m_is_dim;
                             }
                         } else {
-                            *this << "ERROR: Individual control value is: "
-                            << ctr_value << " \n" << std::flush;
+                            *this << "ERROR: Individual control value is: " << ctr_value;
                             result = false;
                         }
                         return result;
@@ -238,8 +237,7 @@ namespace tud {
                                 //The value is off so it makes no sense to proceed
                                 *this << "ERROR: Dof " << wrap.get_dof_idx()
                                         << " individual: " << wrap.get_name()
-                                        << " input value is: " << ctr_value
-                                        << " \n" << std::flush;
+                                        << " input value is: " << ctr_value;
                                 delete[] inputs;
                                 return;
                             }
@@ -390,8 +388,7 @@ namespace tud {
                         }
 
                         *this << "The number of unfit points for dof "
-                        << wrap.get_dof_idx() << " is " << unfit
-                                << "/" << total << "\n" << std::flush;
+                        << wrap.get_dof_idx() << " is " << unfit << "/" << total;
                     }
 
                     /**
@@ -506,10 +503,10 @@ namespace tud {
                                 m_is_dim = (m_p_ctr->get_dim() - m_ss_dim);
                                 //Clear the old data
                                 m_all_data.clear();
-                                *this << "Start extracting grid points\n" << std::flush;
+                                *this << "Start extracting grid points";
                                 //Convert the points into the internal data structures
                                 m_num_states = convert_points_to_data();
-                                *this << "The state-space size is = " << m_num_states << " \n" << std::flush;
+                                *this << "The state-space size is = " << m_num_states ;
                             }
                         }
                     }
@@ -649,11 +646,10 @@ namespace tud {
                         m_log_file.open(log_file_name);
                         m_log_file.clear();
 
-                        *this << "Opened the log-file: " << log_file_name
-                                << "\n" << std::flush;
+                        *this << "Opened the log-file: " << log_file_name;
 
                         //Read controller from file
-                        *this << "Start initializing data structures\n" << std::flush;
+                        *this << "Start initializing data structures";
 
                         //De-couple the BDD from the CUDD manager
                         m_unfit_bdd = BDD();
@@ -674,14 +670,14 @@ namespace tud {
                         m_p_cudd->AutodynDisable();
 
                         //Read controller from file
-                        *this << "Start loading the controller: " << file_name << "\n" << std::flush;
+                        *this << "Start loading the controller: " << file_name;
 
                         //Load the controller
                         bool is_fail = false;
                         if (!read_from_file(*m_p_cudd, *m_p_ctr, *m_p_ctrl_bdd, file_name)) {
                             is_fail = true;
                         }
-                        *this << "Loading: " << file_name << " is finished \n" << std::flush;
+                        *this << "Loading: " << file_name << " is finished";
 
                         //Throw if could not load otherwise extract the bdd data
                         if (is_fail) {
@@ -718,7 +714,7 @@ namespace tud {
                      * @param env the environment
                      */
                     void start_unfit_export(JNIEnv * env) {
-                        *this << "Starting unfit points export\n" << std::flush;
+                        *this << "Starting unfit points export";
                         m_unfit_bdd = m_p_cudd->bddZero();
                     }
 
@@ -730,7 +726,7 @@ namespace tud {
                      */
                     void compute_unfit_points(JNIEnv * env, ctrl_wrapper & wrap) {
                         *this << "Starting unfit points export of " << wrap.get_name()
-                                << " for dof " << wrap.get_dof_idx() << " \n" << std::flush;
+                                << " for dof " << wrap.get_dof_idx();
                         if (m_p_ctr != NULL) {
                             if (m_ss_dim > 0) {
                                 const int dof_idx = wrap.get_dof_idx();
@@ -756,7 +752,7 @@ namespace tud {
                      * @param file_name the BDD file name
                      */
                     void finish_unfit_export(JNIEnv * env, const char * file_name) {
-                        *this << "Dumping unfit points into " << file_name << "\n" << std::flush;
+                        *this << "Dumping unfit points into " << file_name;
                         store_controller(*m_p_cudd,
                                 m_p_ss_mgr->get_states_set(),
                                 m_unfit_bdd, string(file_name));
@@ -828,7 +824,8 @@ namespace tud {
                     time_t now = time(0);
                     string time(ctime(&now));
                     time = time.substr(0, time.length() - 1);
-                    return strm.m_log_file << time << "\b: " << str;
+                    return strm.m_log_file << time << "\b: " << str
+                            << std::endl << std::flush;
                 }
             }
         }
