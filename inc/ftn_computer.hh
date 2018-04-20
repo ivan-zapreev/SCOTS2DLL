@@ -506,7 +506,7 @@ namespace tud {
                                 *this << "Start extracting grid points";
                                 //Convert the points into the internal data structures
                                 m_num_states = convert_points_to_data();
-                                *this << "The state-space size is = " << m_num_states ;
+                                *this << "The state-space size is = " << m_num_states;
                             }
                         }
                     }
@@ -686,6 +686,25 @@ namespace tud {
                         }
 
                         return m_p_ctr->get_dim();
+                    }
+
+                    /**
+                     * Allows to get the number of points of the state-space grid.
+                     * @return the number of points of the state-space grid
+                     */
+                    int get_state_space_size(JNIEnv * env) {
+                        *this << "Retrieving the number of points on the state-space grid";
+                        int size = 1;
+                        if (m_p_ctr != NULL) {
+                            const vector<abs_type> nu_gp = m_p_ctr->get_no_gp_per_dim();
+                            for (int idx = 1; idx < m_p_ctr->get_dim(); ++idx) {
+                                size *= nu_gp[idx];
+                            }
+                        } else {
+                            (void) throwException(env, IllegalStateException,
+                                    "The controller is not loaded yet!");
+                        }
+                        return size;
                     }
 
                     /**

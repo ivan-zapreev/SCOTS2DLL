@@ -36,6 +36,8 @@
 #include "ctrl_wrapper.hh"
 #include "ftn_computer.hh"
 
+#define VOID void
+
 using namespace std;
 using namespace tud::ctrl::scots::jni;
 
@@ -61,10 +63,28 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_load
     return result;
 }
 
-JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
+JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_get_1state_1space_1size
+(JNIEnv * env, jclass) {
+    int result = 0;
+    if (m_p_ftn_comp) {
+        result = m_p_ftn_comp->get_state_space_size(env);
+    } else {
+        (void) throwException(env, IllegalStateException,
+                "The controller is not loaded!");
+    }
+    
+    return result;
+}
+
+JNIEXPORT VOID JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 (JNIEnv * env, jclass, jobject cfg) {
-    (*m_p_ftn_comp) << "Start configuring the object";
-    m_p_ftn_comp->configure(env, cfg);
+    if (m_p_ftn_comp) {
+        (*m_p_ftn_comp) << "Start configuring the object";
+        m_p_ftn_comp->configure(env, cfg);
+    } else {
+        (void) throwException(env, IllegalStateException,
+                "The controller is not loaded!");
+    }
 }
 
 static jobject compute_fitness(JNIEnv * env, jstring pclass_name, jint ipt_dof_idx) {
