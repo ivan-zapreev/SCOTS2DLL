@@ -1,5 +1,5 @@
 /*
- * File:   ftn_computer.hh
+ * File:   fitness_computer.hh
  * Author: Dr. Ivan S. Zapreev
  *
  * Visit my Linked-in profile:
@@ -43,6 +43,7 @@
 #include "data_source.hh"
 #include "ctrl_wrapper.hh"
 #include "error_computer.hh"
+#include "random_hypercube.hh"
 
 using namespace std;
 

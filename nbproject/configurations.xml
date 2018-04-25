@@ -11,6 +11,7 @@
       <itemPath>inc/fitness_computer.hh</itemPath>
       <itemPath>inc/info_logger.hh</itemPath>
       <itemPath>inc/jni_throw.hh</itemPath>
+      <itemPath>inc/random_hypercube.hh</itemPath>
       <itemPath>inc/unfit_exporter.hh</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
@@ -64,7 +65,7 @@
         </ccTool>
         <linkerTool>
           <output>${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}</output>
-          <commandLine>-m64 -lcudd</commandLine>
+          <commandLine>-m64 -lcudd -lgsl</commandLine>
         </linkerTool>
       </compileType>
       <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
@@ -80,6 +81,8 @@
       <item path="inc/info_logger.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/jni_throw.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/random_hypercube.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
       </item>
@@ -126,7 +129,7 @@
           <linkerAddLib>
             <pElem>/usr/local/lib</pElem>
           </linkerAddLib>
-          <commandLine>-m64 -lcudd -O3</commandLine>
+          <commandLine>-m64 -lcudd -O3 -lgsl</commandLine>
         </linkerTool>
       </compileType>
       <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
@@ -142,6 +145,8 @@
       <item path="inc/info_logger.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/jni_throw.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/random_hypercube.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
       </item>

@@ -60,7 +60,7 @@ LDLIBSOPTIONS=
 
 ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}
-	${LINK.cc} -o ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT} ${OBJECTFILES} ${LDLIBSOPTIONS} -m64 -lcudd -dynamiclib -install_name libSCOTS2DLL.${CND_DLIB_EXT} -fPIC
+	${LINK.cc} -o ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT} ${OBJECTFILES} ${LDLIBSOPTIONS} -m64 -lcudd -lgsl -dynamiclib -install_name libSCOTS2DLL.${CND_DLIB_EXT} -fPIC
 
 ${OBJECTDIR}/src/scots2dll.o: src/scots2dll.cc
 	${MKDIR} -p ${OBJECTDIR}/src
