@@ -108,16 +108,22 @@ namespace tud {
                      */
                     virtual ~random_hypercube() {
                         if (m_ll) {
-                            delete m_ll;
+                            delete[] m_ll;
                         }
                         if (m_ur) {
-                            delete m_ur;
+                            delete[] m_ur;
                         }
                         if (m_raw_point) {
-                            delete m_raw_point;
+                            delete[] m_raw_point;
                         }
                         if (m_qr_seq) {
                             gsl_qrng_free(m_qr_seq);
+                        }
+                        if(m_scale) {
+                            delete[] m_scale;
+                        }
+                        if(m_shift) {
+                            delete[] m_shift;
                         }
                     }
 
