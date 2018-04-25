@@ -33,8 +33,11 @@
 
 #include "nl_tudelft_dcsc_scots2jni_Scots2JNI.h"
 
+#include "info_logger.hh"
+#include "data_source.hh"
 #include "ctrl_wrapper.hh"
-#include "ftn_computer.hh"
+#include "fitness_computer.hh"
+#include "unfit_exporter.hh"
 
 #define VOID void
 
@@ -43,46 +46,86 @@ using namespace tud::ctrl::scots::jni;
 
 //Stores the fitness class name
 static const char * const FITNESS_CLASS_NAME = "nl/tudelft/dcsc/scots2sr/sr/ScaledFitness";
-//Stores the fitness computer
-static ftn_computer * m_p_ftn_comp = NULL;
 
-JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_load
-(JNIEnv * env, jclass, jstring file_name) {
+//Stores the info logger object
+static info_logger m_log;
+
+//Stores the fitness computer
+static fitness_computer * m_p_ftn_comp = NULL;
+
+//Stores the pointer to the data source
+static data_source * m_p_data = NULL;
+
+//Stores the unfit points exporter
+static unfit_exporter * m_p_unf_exp = NULL;
+
+/**
+ * Allows to re-set the source file, i.e. re-create 
+ * the data source and fitness computer and load the data.
+ * @param env the JNI environment
+ * @param file_name_c the controller file name
+ * @return the number of controller dimensions
+ */
+static int re_set_source_file(JNIEnv * env, const char *file_name_c) {
     /*Re-set the data*/
     if (m_p_ftn_comp) {
         delete m_p_ftn_comp;
     }
-    //Instantiate the new fitness computer
-    m_p_ftn_comp = new ftn_computer();
+    /*Re-set the data*/
+    if (m_p_data) {
+        delete m_p_data;
+    }
+
+    //Open logging
+    m_log.open_log(file_name_c);
+
+    //Instantiate the new data source
+    m_p_data = new data_source(m_log);
 
     //Load the controller
+    return m_p_data->load(env, file_name_c);
+}
+
+JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_load
+(JNIEnv * env, jclass, jstring file_name) {
+    //Get the file name and open logging
     const char *file_name_c = env->GetStringUTFChars(file_name, 0);
-    const int result = m_p_ftn_comp->load(env, file_name_c);
+
+    //Re-set the data
+    const int result = re_set_source_file(env, file_name_c);
+
+    //Release the string
     env->ReleaseStringUTFChars(file_name, file_name_c);
 
     return result;
 }
 
 JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_get_1state_1space_1size
-(JNIEnv * env, jclass) {
+(JNIEnv * env, jclass, jint ss_dim) {
     int result = 0;
-    if (m_p_ftn_comp) {
-        result = m_p_ftn_comp->get_state_space_size(env);
+    if (m_p_data) {
+        result = m_p_data->get_state_space_size(env, ss_dim);
     } else {
-        (void) throwException(env, IllegalStateException,
+        (void) throwException(m_log, env, IllegalStateException,
                 "The controller is not loaded!");
     }
-    
+
     return result;
 }
 
 JNIEXPORT VOID JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 (JNIEnv * env, jclass, jobject cfg) {
-    if (m_p_ftn_comp) {
-        (*m_p_ftn_comp) << "Start configuring the object";
-        m_p_ftn_comp->configure(env, cfg);
+    LOG(m_log, "Start configuring the object");
+
+    if (m_p_data != NULL) {
+        //Configure the data source
+        m_p_data->configure(env, cfg);
+
+        //Instantiate the new fitness computer, 
+        //once the data source is fully configured
+        m_p_ftn_comp = new fitness_computer(m_log, *m_p_data);
     } else {
-        (void) throwException(env, IllegalStateException,
+        (void) throwException(m_log, env, IllegalStateException,
                 "The controller is not loaded!");
     }
 }
@@ -97,7 +140,7 @@ static jobject compute_fitness(JNIEnv * env, jstring pclass_name, jint ipt_dof_i
         ctrl_wrapper wrapper(env, ind_class, pn_local, ipt_dof_idx);
         m_p_ftn_comp->compute(env, wrapper, exact_ftn, req_ftn, scale, shift);
     } else {
-        (void) throwException(env, ClassNotFoundException,
+        (void) throwException(m_log, env, ClassNotFoundException,
                 "The requested individual is not found!");
     }
 
@@ -116,28 +159,34 @@ JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitn
 
 JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_start_1unfit_1export
 (JNIEnv * env, jclass) {
-    m_p_ftn_comp->start_unfit_export(env);
+    m_p_unf_exp = new unfit_exporter(m_log, *m_p_data);
+    m_p_unf_exp->start_unfit_export(env);
 }
 
-JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_export_1unfit_1points
+JNIEXPORT jdouble JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_export_1unfit_1points
 (JNIEnv * env, jclass, jstring pclass_name, jint ipt_dof_idx) {
+    double result = 0.0;
+    
     const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
     string pn_local(pname_c);
     jclass ind_class = env->FindClass(pname_c);
     env->ReleaseStringUTFChars(pclass_name, pname_c);
     if (ind_class != NULL) {
         ctrl_wrapper wrapper(env, ind_class, pn_local, ipt_dof_idx);
-        m_p_ftn_comp->compute_unfit_points(env, wrapper);
+        result = m_p_unf_exp->compute_unfit_points(env, wrapper);
     } else {
-        (void) throwException(env, ClassNotFoundException,
+        (void) throwException(m_log, env, ClassNotFoundException,
                 "The requested individual is not found!");
     }
+    
+    return result;
 }
 
 JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_finish_1unfit_1export
 (JNIEnv * env, jclass, jstring file_name) {
     const char *file_name_c = env->GetStringUTFChars(file_name, 0);
-    m_p_ftn_comp->finish_unfit_export(env, file_name_c);
+    m_p_unf_exp->finish_unfit_export(env, file_name_c);
     env->ReleaseStringUTFChars(file_name, file_name_c);
+    delete m_p_unf_exp;
 }
 

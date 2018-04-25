@@ -4,9 +4,14 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>inc/config_wrapper.hh</itemPath>
       <itemPath>inc/ctrl_wrapper.hh</itemPath>
-      <itemPath>inc/ftn_computer.hh</itemPath>
+      <itemPath>inc/data_source.hh</itemPath>
+      <itemPath>inc/error_computer.hh</itemPath>
+      <itemPath>inc/fitness_computer.hh</itemPath>
+      <itemPath>inc/info_logger.hh</itemPath>
       <itemPath>inc/jni_throw.hh</itemPath>
+      <itemPath>inc/unfit_exporter.hh</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
                    displayName="Resource Files"
@@ -62,11 +67,21 @@
           <commandLine>-m64 -lcudd</commandLine>
         </linkerTool>
       </compileType>
+      <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="inc/ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
       </item>
-      <item path="inc/ftn_computer.hh" ex="false" tool="3" flavor2="0">
+      <item path="inc/data_source.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/error_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/fitness_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/info_logger.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/jni_throw.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
       </item>
@@ -114,11 +129,21 @@
           <commandLine>-m64 -lcudd -O3</commandLine>
         </linkerTool>
       </compileType>
+      <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="inc/ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
       </item>
-      <item path="inc/ftn_computer.hh" ex="false" tool="3" flavor2="0">
+      <item path="inc/data_source.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/error_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/fitness_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/info_logger.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/jni_throw.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
       </item>

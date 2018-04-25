@@ -29,6 +29,8 @@
 #include <jni.h>
 #include <string>
 
+#include "info_logger.hh"
+
 using namespace std;
 
 namespace tud {
@@ -41,7 +43,9 @@ namespace tud {
                 const char * const IllegalArgumentException = "java/lang/IllegalArgumentException";
                 const char * const ClassNotFoundException = "java/lang/ClassNotFoundException";
 
-                jint throwException(JNIEnv *env, const char * const class_name, const char * const message) {
+                jint throwException(info_logger &logger, JNIEnv *env,
+                        const char * const class_name, const char * const message) {
+                    LOG(logger, "ERROR (" << class_name << "): " << message);
                     jclass ex_class = env->FindClass(class_name);
                     if (ex_class == NULL) {
                         return -1;
