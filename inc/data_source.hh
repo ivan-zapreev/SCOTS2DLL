@@ -442,18 +442,24 @@ namespace tud {
                             double const * state_dbl, sample_set & samples,
                             raw_data & state, raw_data & inputs,
                             raw_data & sample_data, var_bisector * p_bisect = NULL) {
-                        bool result = false;
+                        bool is_valid = false;
                         abs_type state_id;
                         //Check if the point is on the grid (this is more a safety check)
                         if (m_p_ss_mgr->istoi(state_abs, state_id)) {
-                            //Check if the point is not cached yet
-                            if (samples.insert(state_id).second) {
+                            //Check if the point is not cached yet then try it out
+                            auto res = samples.insert(state_id);
+                            if (res.second) {
                                 //Store the point if it is in the domain
-                                result = store_dom_state_data<IS_SCALE_FIT, IS_BISECTOR>(
+                                is_valid = store_dom_state_data<IS_SCALE_FIT, IS_BISECTOR>(
                                         state_abs, state_dbl, state, inputs, sample_data, p_bisect);
+                                //Check if the point turned out to be 
+                                //not from the domain then remove it
+                                if (!is_valid) {
+                                    samples.erase(res.first);
+                                }
                             }
                         }
-                        return result;
+                        return is_valid;
                     }
 
                     /**
@@ -475,14 +481,11 @@ namespace tud {
                             uint64_t * state_abs, double * state_dbl,
                             raw_data & state, raw_data & inputs,
                             raw_data & sample_data, var_bisector * p_bisect = NULL) {
-                        LOG("Performing simple Monte-Carlo simulations "
-                                << "for sample size: " << sample_size << " "
+                        LOG("Monte-Carlo simulations, sample size: " << sample_size << " "
                                 << (IS_BISECTOR ? "WITH" : "WITHOUT") << " bisector");
 
-                        //Declare data containers
-                        int64_t ext_smp_cnt = 0;
-
                         //Prepare samples
+                        size_t ext_smp_cnt = 0;
                         while (ext_smp_cnt < sample_size) {
                             //Generate a random abstract state
                             cube.get_random(state_abs, state_dbl);
@@ -517,22 +520,25 @@ namespace tud {
                             sample_set & samples, uint64_t * state_abs,
                             double * state_dbl, raw_data & state,
                             raw_data & inputs, raw_data & sample_data) {
-                        //Choose bisection dof
-                        const int dim_idx = bisect.choose_dof();
+                        LOG("Remaining sample size: " << sample_size);
 
                         //If the bisection dof could be found then split
-                        if ((0 <= dim_idx) && (dim_idx < m_config.m_num_ss_dim)) {
+                        const int dim_idx = bisect.get_bisect_dof();
+                        LOG("The bisection dof idx: " << dim_idx);
+                        if ((dim_idx >= 0) && (dim_idx < m_config.m_num_ss_dim)) {
                             //Get the bisection ratio
                             const double ratio = bisect.get_lr_ratio();
 
-                            //Get the sub hypercubes
+                            LOG("The bisection ratio is: " << ratio);
+
+                            //Get the sub hypercubes as bisected
                             random_hypercube * p_lc = NULL, * p_rc = NULL;
-                            cube.bisect(dim_idx, p_lc, p_rc);
+                            uint64_t lr = 0, rl = 0;
+                            bisect.get_lr_rl_dounds(lr, rl);
+                            cube.split(dim_idx, lr, rl, p_lc, p_rc);
 
                             //Recursively go to left hypercube
-                            const int64_t lcs_size =
-                                    static_cast<int64_t> (sample_size * ratio)
-                                    - bisect.get_left_size();
+                            const int64_t lcs_size = sample_size * ratio;
                             prepare_sim_rss_data<IS_SCALE_FIT>(
                                     is_dof_idx, lcs_size, *p_lc,
                                     samples, state_abs, state_dbl,
@@ -540,9 +546,7 @@ namespace tud {
                             delete p_lc;
 
                             //Recursively go to right hypercube
-                            const int64_t rcs_size =
-                                    sample_size - lcs_size
-                                    - bisect.get_right_size();
+                            const int64_t rcs_size = sample_size - lcs_size;
                             prepare_sim_rss_data<IS_SCALE_FIT>(
                                     is_dof_idx, rcs_size, *p_rc,
                                     samples, state_abs, state_dbl,
@@ -575,11 +579,11 @@ namespace tud {
                             uint64_t * state_abs, double * state_dbl,
                             raw_data & state, raw_data & inputs,
                             raw_data & sample_data) {
+                        LOG("Remaining sample size: " << sample_size);
+
                         //Compute the bisection sample size
                         const int64_t bs_size = m_config.m_bisect_ratio*sample_size;
-
-                        //Check if we need to proceed with bisection
-                        LOG("Checking on " << bs_size << " >= " << m_config.m_bisect_size);
+                        //Check if we can proceed bisecting
                         if (bs_size >= m_config.m_bisect_size) {
                             //Declare the bisector
                             var_bisector bisect(cube, is_dof_idx);
@@ -594,9 +598,12 @@ namespace tud {
                             bisect.done_sampling();
 
                             //Bisect the hypercube based on the bisector statistics
+                            //Notice that the sample size is to be reduced by the
+                            //number of bisection samples used to decide on bisection
                             prepare_sim_rss_data<IS_SCALE_FIT>(
-                                    is_dof_idx, sample_size, bisect, cube, samples,
-                                    state_abs, state_dbl, state, inputs, sample_data);
+                                    is_dof_idx, sample_size - bs_size, bisect,
+                                    cube, samples, state_abs, state_dbl, state,
+                                    inputs, sample_data);
                         } else {
                             //The bisection is not needed, just proceed with regular MC
                             prepare_sim_mc_data<IS_SCALE_FIT, false>(
@@ -751,7 +758,6 @@ namespace tud {
                             if (IS_BISECTOR) {
                                 p_bisect->stop_sample();
                             }
-
                         } else {
                             result = false;
                         }

@@ -55,6 +55,7 @@ namespace tud {
                 typedef pair<int64_t, ips_counts> cube_info;
                 //Stores input info for the left and right cubes for the split
                 typedef pair<cube_info, cube_info> split_info;
+                //Is used to store the set of distinct input values
                 typedef unordered_set<uint64_t> inputs_set;
 
                 /**
@@ -93,10 +94,66 @@ namespace tud {
                     vector<inputs_set> m_state_lr_ips;
 
                     //The dof will be chosen after
-                    int m_chosen_dof;
+                    int m_ch_dof_idx;
+                    //The left/right sample size ratio
                     double m_lr_ratio;
+                    //Stores the number of samples in the left
+                    //hypercube for the chosen bisection
                     int64_t m_left_size;
+                    //Stores the number of samples in the right
+                    //hypercube for the chosen bisection
                     int64_t m_right_size;
+
+                    /**
+                     * Allows to split the interval in two sub-intervals
+                     * @param lb the left interval border
+                     * @param rb the right interval border
+                     * @param lrb the right border of the new left interval
+                     * @param rlb the left border of the new right interval
+                     * @return true if the interval could be split, otherwise false
+                     */
+                    inline static bool bisect(
+                            const uint64_t lb, const uint64_t rb,
+                            uint64_t & lrb, uint64_t & rlb) {
+                        bool result = true;
+
+                        LOG("Bisecting interval [" << lb << ", " << rb << "]");
+
+                        //If the number of intervals is less than 3 then we can not split
+                        const uint64_t num_its = (rb - lb);
+                        if (num_its >= 3) {
+                            //Compute the mid point, is always rounded down
+                            const uint64_t mid_point = (rb + lb) / 2;
+
+                            LOG("Mid point of [" << lb << ", " << rb << "] is: " << mid_point);
+
+                            //Compute the two new interval bounds
+                            lrb = mid_point, rlb = mid_point;
+                            //Check on the number of intervals
+                            if (num_its % 2) {
+                                //The number of intervals is odd, so the mid point
+                                //is rounded down from the center, thus the left
+                                //border of the right interval is to be on the
+                                //right of the center
+                                rlb += 1;
+                            } else {
+                                //The number of intervals is even, so there are
+                                //two possibilities to make the bisection, so
+                                //make a uniform random choice between them.
+                                if (bool_gen()) {
+                                    lrb -= 1;
+                                } else {
+                                    rlb += 1;
+                                }
+                            }
+                            LOG("Splitting [" << lb << ", " << rb
+                                    << "] into: [" << lb << ", " << lrb
+                                    << "] and [" << rlb << ", " << rb << "]");
+                        } else {
+                            result = false;
+                        }
+                        return result;
+                    }
 
                     /**
                      * Allows to increment the input count for the given set
@@ -125,12 +182,12 @@ namespace tud {
                      * @return true if the variance could be computed, otherwise false
                      */
                     inline bool get_root_variance(const ips_counts & counts, double & root_var) {
-                        //Check if the sample variance can be computed
-                        const bool is_can_compute = (counts.size() >= 2);
-
-                        //If it can be computed then do the computations
+                        //See if we can compute the mean first
+                        bool is_can_compute = (counts.size() > 0);
+                        LOG("Inputs count: " << counts.size()
+                                << ", compute mean (?): " << is_can_compute);
                         if (is_can_compute) {
-                            //Compute the sample mean value
+                            //Compute the mean value
                             double count = 0.0;
                             double mean = 0.0;
                             for (auto elem : counts) {
@@ -139,16 +196,22 @@ namespace tud {
                             }
                             mean = mean / count;
 
-                            //Compute the sample variance
-                            root_var = 0.0;
-                            for (auto elem : counts) {
-                                const double delta = (elem.first * elem.second - mean);
-                                root_var += delta * delta;
-                            }
-                            root_var = root_var / (count - 1.0);
+                            //Check if the sample variance can be computed
+                            is_can_compute = (count > 1.0);
+                            LOG("Sample count: " << count
+                                    << ", compute variance (?): " << is_can_compute);
+                            if (is_can_compute) {
+                                //Compute the sample variance
+                                root_var = 0.0;
+                                for (auto elem : counts) {
+                                    const double delta = (elem.first * elem.second - mean);
+                                    root_var += delta * delta;
+                                }
+                                root_var = root_var / (count - 1.0);
 
-                            //Compute the root of the variance
-                            root_var = pow(root_var, 1.0 / (1.0 + RSS_ALPHA));
+                                //Compute the root of the variance
+                                root_var = pow(root_var, 1.0 / (1.0 + RSS_ALPHA));
+                            }
                         }
 
                         return is_can_compute;
@@ -163,7 +226,7 @@ namespace tud {
                      */
                     var_bisector(const random_hypercube & cube, const int is_dof_idx)
                     : m_cube(cube), m_is_dof_idx(is_dof_idx), m_lr_ratio(NO_LR_RATIO),
-                    m_chosen_dof(UNDEFINED_DOF_IDX), m_left_size(0), m_right_size(0) {
+                    m_ch_dof_idx(UNDEFINED_DOF_IDX), m_left_size(0), m_right_size(0) {
                         //Get the number of dofs
                         const int num_dofs = m_cube.get_num_dim();
                         LOG("Constructing a new variance bisector for " << num_dofs << " dofs");
@@ -180,22 +243,25 @@ namespace tud {
                         const uint64_t * ur = cube.get_ur();
                         for (int dof_idx = 0; dof_idx < num_dofs; ++dof_idx) {
                             LOG("Considering bisection dof: " << dof_idx);
-                            
+
                             //Initialization with 0 of right interval left border
                             //means there is no possible split in this dimension
-                            if (random_hypercube::split_interval(
-                                    ll[dof_idx], ur[dof_idx], lrb, rlb)) {
+                            if (bisect(ll[dof_idx], ur[dof_idx], lrb, rlb)) {
                                 m_split_rlb[dof_idx] = rlb;
                             } else {
                                 m_split_rlb[dof_idx] = NO_SPLIT_POINT;
                             }
-                            
+
                             LOG("The bisection left border of the right "
                                     << "cube is: " << m_split_rlb[dof_idx]);
 
                             //Now initialize the data
-                            m_split_rlb[dof_idx] = NO_SPLIT_POINT;
-                            m_splits[dof_idx] = {{0,{}},{0,{}}};
+                            m_splits[dof_idx] = {
+                                {0,
+                                    {}},
+                                {0,
+                                    {}}
+                            };
                             m_state_split[dof_idx] = split_side::UNDEF_SIDE;
                             m_state_lr_ips[dof_idx] = {};
                         }
@@ -288,8 +354,12 @@ namespace tud {
                     inline void done_sampling() {
                         //Get the number of dofs
                         const int num_dofs = m_cube.get_num_dim();
+                        LOG("Finalizing variance bisector sampling.");
                         //Iterate over the dofs and choose the best one for bisection
                         for (int dof_idx = 0; dof_idx < num_dofs; ++dof_idx) {
+                            LOG("Dof: " << dof_idx << " split left/right: "
+                                    << m_split_rlb[dof_idx]);
+
                             //Check if there is a bisection possible in this dof
                             if (m_split_rlb[dof_idx] != NO_SPLIT_POINT) {
                                 //Compute the bisection ratio
@@ -305,7 +375,7 @@ namespace tud {
                                     if (abs(lr_ratio - NO_LR_RATIO) > abs(m_lr_ratio - NO_LR_RATIO)) {
                                         //Set the given dof as the currently chosen one
                                         m_lr_ratio = lr_ratio;
-                                        m_chosen_dof = dof_idx;
+                                        m_ch_dof_idx = dof_idx;
                                         m_left_size = left_cube.first;
                                         m_right_size = right_cube.first;
                                     }
@@ -315,14 +385,25 @@ namespace tud {
                     }
 
                     /**
+                     * Allows to get the right and left borders of the left and
+                     * right intervals for bisection for the chosen dof.
+                     * @param lr the right border of the left interval to be set
+                     * @param rl the left border of the right interval to be set
+                     */
+                    inline void get_lr_rl_dounds(uint64_t & lr, uint64_t & rl) {
+                        rl = m_split_rlb[m_ch_dof_idx];
+                        lr = rl - 1;
+                    }
+
+                    /**
                      * Must be called to indicate that all the samples have been
                      * added and one needs to decide in which dimension the
                      * bisection is to be done.
                      * @return the dimension in which bisection is to be done or
                      * negative value if such a dimension could not be found
                      */
-                    inline int choose_dof() {
-                        return m_chosen_dof;
+                    inline int get_bisect_dof() {
+                        return m_ch_dof_idx;
                     }
 
                     /**

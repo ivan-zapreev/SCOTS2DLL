@@ -193,91 +193,40 @@ namespace tud {
                     }
 
                     /**
-                     * Allows to split the interval in two sub-intervals
-                     * @param lb the left interval border
-                     * @param rb the right interval border
-                     * @param lb_r the right border of the new left interval
-                     * @param rb_l the left border of the new right interval
-                     * @return true if the interval could be split, otherwise false
-                     */
-                    inline static bool split_interval(
-                            const uint64_t lb, const uint64_t rb,
-                            uint64_t & lb_r, uint64_t & rb_l) {
-                        bool result = true;
-
-                        LOG("Splitting interval [" << lb << ", " << rb << "]");
-
-                        //If the number of intervals is less than 3 then we can not split
-                        const uint64_t num_its = (rb - lb);
-                        if (num_its >= 3) {
-                            //Compute the mid point, is always rounded down
-                            const uint64_t mid_point = (rb + lb) / 2;
-
-                            LOG("Mid point of [" << lb << ", " << rb << "] is: " << mid_point);
-
-                            //Compute the two new interval bounds
-                            lb_r = mid_point, rb_l = mid_point;
-                            //Check on the number of intervals
-                            if (num_its % 2) {
-                                //The number of intervals is odd, so the mid point
-                                //is  rounded down from the center, thus the left
-                                //border of the right interval is to be on the
-                                //right of the center
-                                lb_r += 1;
-                            } else {
-                                //The number of intervals is even, so there are
-                                //two possibilities to make the bisection, so
-                                //make a uniform random choice between them.
-                                if (bool_gen()) {
-                                    rb_l -= 1;
-                                } else {
-                                    lb_r += 1;
-                                }
-                            }
-                        } else {
-                            result = false;
-                        }
-                        return result;
-                    }
-
-                    /**
-                     * Allows to bisect the hypercube into two pieces
-                     * @param dim_idx the dimension to bisect in
+                     * Allows to split the hypercube into two pieces.
+                     * @param dof_idx the dimension to bisect in
+                     * @param lrb the right border of the left interval to be set
+                     * @param rlb the left border of the right interval to be set
                      * @param left_cube the new left part of the hypercube
                      * @param right_cube the new right part of the hypercube
                      * @return true if the bisection was successful, otherwise false
                      */
-                    bool bisect(const int dim_idx,
+                    void split(const int dof_idx,
+                            const uint64_t lrb, const uint64_t rlb, 
                             random_hypercube*&left_cube,
                             random_hypercube*&right_cube) {
-                        bool result = true;
-                        //Try splitting the interval
-                        uint64_t lb_r = 0, rb_l = 0;
-                        if (split_interval(m_ll[dim_idx], m_ur[dim_idx], lb_r, rb_l)) {
-                            //Allocate and initialize the left right interval border arrays
-                            const size_t data_size = m_num_dim * sizeof (uint64_t);
+                        //Allocate and initialize the left right interval border arrays
+                        const size_t data_size = m_num_dim * sizeof (uint64_t);
 
-                            uint64_t* ll_l = new uint64_t[m_num_dim];
-                            memcpy(ll_l, m_ll, data_size);
-                            uint64_t* ur_l = new uint64_t[m_num_dim];
-                            memcpy(ur_l, m_ur, data_size);
-                            ur_l[dim_idx] = rb_l;
+                        //Make data for the left interval
+                        uint64_t* l_ll = new uint64_t[m_num_dim];
+                        memcpy(l_ll, m_ll, data_size);
+                        uint64_t* l_ur = new uint64_t[m_num_dim];
+                        memcpy(l_ur, m_ur, data_size);
+                        l_ur[dof_idx] = lrb;
 
-                            uint64_t* ll_r = new uint64_t[m_num_dim];
-                            memcpy(ll_r, m_ll, data_size);
-                            uint64_t* ur_r = new uint64_t[m_num_dim];
-                            memcpy(ur_r, m_ur, data_size);
-                            ll_r[dim_idx] = lb_r;
+                        //Make data for the right interval
+                        uint64_t* r_ll = new uint64_t[m_num_dim];
+                        memcpy(r_ll, m_ll, data_size);
+                        uint64_t* r_ur = new uint64_t[m_num_dim];
+                        memcpy(r_ur, m_ur, data_size);
+                        r_ll[dof_idx] = rlb;
 
-                            //Allocate the new random hypercubes
-                            left_cube = new random_hypercube(
-                                    m_qr_seq, false, m_num_dim, ll_l, ur_l);
-                            right_cube = new random_hypercube(
-                                    m_qr_seq, false, m_num_dim, ll_r, ur_r);
-                        } else {
-                            result = false;
-                        }
-                        return result;
+                        //Allocate the new random hypercubes
+                        left_cube = new random_hypercube(
+                                m_qr_seq, false, m_num_dim, l_ll, l_ur);
+                        right_cube = new random_hypercube(
+                                m_qr_seq, false, m_num_dim, r_ll, r_ur);
                     }
                 };
             }
