@@ -34,6 +34,7 @@
 #include "config_wrapper.hh"
 #include "data_source.hh"
 #include "error_computer.hh"
+#include "sample_data_iter.hh"
 
 namespace tud {
     namespace ctrl {
@@ -45,9 +46,6 @@ namespace tud {
                  */
                 class error_computer {
                 protected:
-                    //Stores the reference to the logging object
-                    info_logger & m_log;
-
                     //Stores the data source reference
                     data_source & m_data;
 
@@ -58,34 +56,33 @@ namespace tud {
                      * Allows to compute the state error given the input from the candidate
                      * @param ctr_value the control value for the state
                      * @param is_dof_idx the dof index in the dof dimensions
-                     * @param cursor the cursor for the original controller data
+                     * @param ipts_iter the inputs iterator for the original controller data
                      * @param delta_err the error to be computed
                      * @return if true then the error could be computed, otherwise false
                      */
-                    bool compute_state_error(const double ctr_value, const int is_dof_idx,
-                            double const * & cursor, double & delta_err) {
+                    template<typename IPTS_ITER_TYPE>
+                    bool min_state_error(const double ctr_value, const int is_dof_idx,
+                            IPTS_ITER_TYPE & ipts_iter, double & delta_err) {
                         bool result = true;
+
+                        //Initialize the error
+                        delta_err = DBL_MAX;
 
                         //Do not proceed if there is a nan value
                         if (!isnan(ctr_value) && !isinf(ctr_value)) {
-                            //Shift the cursor to where the inputs count is
-                            cursor += m_config.m_num_ss_dim;
-                            //Get the inputs count
-                            const abs_type ips_cnt = static_cast<abs_type> (*cursor);
-                            //Shift to the inputs part
-                            cursor += 1;
-                            //Now get the minimum error
-                            for (abs_type idx = 0; idx < ips_cnt; ++idx) {
+                            //Iterate over the inputs
+                            const double * input = NULL;
+                            while (ipts_iter.next_input(input)) {
                                 //Get the dof input value 
-                                const double act_value = cursor[is_dof_idx];
+                                const double act_value = input[is_dof_idx];
                                 //Compute the delta error
                                 delta_err = min(delta_err, abs(ctr_value - act_value));
-                                //Shift to the following input
-                                cursor += m_config.m_num_is_dim;
                             }
                         } else {
-                            LOG(m_log, "ERROR: Individual control value is: " << ctr_value);
+                            LOG("ERROR: Individual control value is: " << ctr_value);
                             result = false;
+                            //Skip the inputs data
+                            ipts_iter.skip_inputs_data();
                         }
                         return result;
                     }
@@ -95,11 +92,10 @@ namespace tud {
                     /**
                      * The basic constructor
                      * 
-                     * @param log the reference to the logging object
                      * @param data the configured data source
                      */
-                    error_computer(info_logger & log, data_source & data)
-                    : m_log(log), m_data(data), m_config(m_data.get_config()) {
+                    error_computer(data_source & data)
+                    : m_data(data), m_config(m_data.get_config()) {
                     }
 
                 };

@@ -74,9 +74,9 @@ namespace tud {
                     //True if the Recursive Stratified Sampling (RSS) is to be used
                     const bool m_is_rss;
                     //Stores the initial sample size for the Monte Carlo sampling
-                    const long m_sample_size;
+                    const int64_t m_sample_size;
                     //Stores the minimum sample size the RSS is applied to
-                    const long m_bisect_size;
+                    const int64_t m_bisect_size;
                     //Stores the fraction of sample to be used for bisection
                     const double m_bisect_ratio;
 
@@ -120,8 +120,8 @@ namespace tud {
                         const_cast<double&> (m_ftn_scale) = other.m_ftn_scale;
                         const_cast<bool&> (m_is_mc) = other.m_is_mc;
                         const_cast<bool&> (m_is_rss) = other.m_is_rss;
-                        const_cast<long&> (m_sample_size) = other.m_sample_size;
-                        const_cast<long&> (m_bisect_size) = other.m_bisect_size;
+                        const_cast<int64_t&> (m_sample_size) = other.m_sample_size;
+                        const_cast<int64_t&> (m_bisect_size) = other.m_bisect_size;
                         const_cast<double&> (m_bisect_ratio) = other.m_bisect_ratio;
 
                         return *this;
@@ -151,20 +151,19 @@ namespace tud {
                     /**
                      * Allows to verify the consistency of the data, if the 
                      * data is not consistent then an exception is thrown
-                     * @patam log the info logger class
                      * @param env the JNI environment
                      */
-                    void finalize(info_logger & log, JNIEnv * env) const {
+                    void finalize(JNIEnv * env) const {
                         //Check the state space size
                         if (m_num_ss_dim < 1 || m_num_is_dim < 1) {
-                            (void) throwException(log, env, IllegalArgumentException,
+                            (void) throwException(env, IllegalArgumentException,
                                     "The state-space size must be [1, #dofs)");
                         }
 
                         //Check the attractor value
                         if (m_is_complex) {
                             if (m_attr_size < 0 || m_attr_size >= MAX_ATTRACTOR_SIZE) {
-                                (void) throwException(log, env, IllegalArgumentException,
+                                (void) throwException(env, IllegalArgumentException,
                                         "Improper attractor value, must be within [0, 0.5)!");
                             }
                         }
@@ -173,19 +172,19 @@ namespace tud {
                         if (m_is_mc) {
                             //Check on the sample size
                             if (m_sample_size < 1) {
-                                (void) throwException(log, env, IllegalArgumentException,
+                                (void) throwException(env, IllegalArgumentException,
                                         "The sample size for Monte Carlo simulations must be >= 1!");
                             }
                             //If we have Recursive Stratified Sampling
                             if (m_is_rss) {
                                 //Check on the bisection size
                                 if (m_bisect_size < 1) {
-                                    (void) throwException(log, env, IllegalArgumentException,
+                                    (void) throwException(env, IllegalArgumentException,
                                             "The minimum bisection sample size for recursive stratified sampling must be >= 1!");
                                 }
                                 //Check on the bisection ratio
                                 if ((m_bisect_ratio <= 0.0) || (m_bisect_ratio >= 1.0)) {
-                                    (void) throwException(log, env, IllegalArgumentException,
+                                    (void) throwException(env, IllegalArgumentException,
                                             "The bisection ratio for recursive stratified sampling must be within (0.0,1.0)!");
                                 }
                             }

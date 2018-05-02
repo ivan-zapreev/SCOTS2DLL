@@ -47,9 +47,6 @@ using namespace tud::ctrl::scots::jni;
 //Stores the fitness class name
 static const char * const FITNESS_CLASS_NAME = "nl/tudelft/dcsc/scots2sr/sr/ScaledFitness";
 
-//Stores the info logger object
-static info_logger m_log;
-
 //Stores the fitness computer
 static fitness_computer * m_p_ftn_comp = NULL;
 
@@ -77,10 +74,10 @@ static int re_set_source_file(JNIEnv * env, const char *file_name_c) {
     }
 
     //Open logging
-    m_log.open_log(file_name_c);
+    open_info_log(file_name_c);
 
     //Instantiate the new data source
-    m_p_data = new data_source(m_log);
+    m_p_data = new data_source();
 
     //Load the controller
     return m_p_data->load(env, file_name_c);
@@ -106,7 +103,7 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_get_1state_1spac
     if (m_p_data) {
         result = m_p_data->get_state_space_size(env, ss_dim);
     } else {
-        (void) throwException(m_log, env, IllegalStateException,
+        (void) throwException(env, IllegalStateException,
                 "The controller is not loaded!");
     }
 
@@ -115,7 +112,7 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_get_1state_1spac
 
 JNIEXPORT VOID JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 (JNIEnv * env, jclass, jobject cfg) {
-    LOG(m_log, "Start configuring the object");
+    LOG("Start configuring the object");
 
     if (m_p_data != NULL) {
         //Configure the data source
@@ -123,33 +120,42 @@ JNIEXPORT VOID JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 
         //Instantiate the new fitness computer, 
         //once the data source is fully configured
-        m_p_ftn_comp = new fitness_computer(m_log, *m_p_data);
+        m_p_ftn_comp = new fitness_computer(*m_p_data);
     } else {
-        (void) throwException(m_log, env, IllegalStateException,
+        (void) throwException(env, IllegalStateException,
                 "The controller is not loaded!");
     }
+    LOG("The object configuration is finished");
 }
 
 static jobject compute_fitness(JNIEnv * env, jstring pclass_name, jint ipt_dof_idx) {
-    double exact_ftn = 0.0, req_ftn = 0.0, scale = 1.0, shift = 0.0;
-    const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
-    string pn_local(pname_c);
-    jclass ind_class = env->FindClass(pname_c);
-    env->ReleaseStringUTFChars(pclass_name, pname_c);
-    if (ind_class != NULL) {
-        ctrl_wrapper wrapper(env, ind_class, pn_local, ipt_dof_idx);
-        m_p_ftn_comp->compute(env, wrapper, exact_ftn, req_ftn, scale, shift);
-    } else {
-        (void) throwException(m_log, env, ClassNotFoundException,
-                "The requested individual is not found!");
-    }
+    jobject result;
+    if (m_p_data != NULL) {
+        double exact_ftn = 0.0, req_ftn = 0.0, scale = 1.0, shift = 0.0;
+        const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
+        string pn_local(pname_c);
+        jclass ind_class = env->FindClass(pname_c);
+        env->ReleaseStringUTFChars(pclass_name, pname_c);
+        if (ind_class != NULL) {
+            ctrl_wrapper wrapper(env, ind_class, pn_local,
+                    ipt_dof_idx, m_p_data->get_config().m_num_ss_dim);
+            m_p_ftn_comp->compute(env, wrapper, exact_ftn, req_ftn, scale, shift);
+        } else {
+            (void) throwException(env, ClassNotFoundException,
+                    "The requested individual is not found!");
+        }
 
-    //Find the fitness container class
-    jclass m_ftn_cls = env->FindClass(FITNESS_CLASS_NAME);
-    //Find the fitness container class constructor
-    jmethodID m_ftn_con_id = env->GetMethodID(m_ftn_cls, "<init>", "(DDDD)V");
-    //Return the fitness object
-    return env->NewObject(m_ftn_cls, m_ftn_con_id, exact_ftn, req_ftn, scale, shift);
+        //Find the fitness container class
+        jclass m_ftn_cls = env->FindClass(FITNESS_CLASS_NAME);
+        //Find the fitness container class constructor
+        jmethodID m_ftn_con_id = env->GetMethodID(m_ftn_cls, "<init>", "(DDDD)V");
+        //Return the fitness object
+        result = env->NewObject(m_ftn_cls, m_ftn_con_id, exact_ftn, req_ftn, scale, shift);
+    } else {
+        (void) throwException(env, IllegalStateException,
+                "The controller is not loaded!");
+    }
+    return result;
 }
 
 JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitness
@@ -159,26 +165,32 @@ JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitn
 
 JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_start_1unfit_1export
 (JNIEnv * env, jclass) {
-    m_p_unf_exp = new unfit_exporter(m_log, *m_p_data);
+    m_p_unf_exp = new unfit_exporter(*m_p_data);
     m_p_unf_exp->start_unfit_export(env);
 }
 
 JNIEXPORT jdouble JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_export_1unfit_1points
 (JNIEnv * env, jclass, jstring pclass_name, jint ipt_dof_idx) {
     double result = 0.0;
-    
-    const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
-    string pn_local(pname_c);
-    jclass ind_class = env->FindClass(pname_c);
-    env->ReleaseStringUTFChars(pclass_name, pname_c);
-    if (ind_class != NULL) {
-        ctrl_wrapper wrapper(env, ind_class, pn_local, ipt_dof_idx);
-        result = m_p_unf_exp->compute_unfit_points(env, wrapper);
+
+    if (m_p_data != NULL) {
+        const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
+        string pn_local(pname_c);
+        jclass ind_class = env->FindClass(pname_c);
+        env->ReleaseStringUTFChars(pclass_name, pname_c);
+        if (ind_class != NULL) {
+            ctrl_wrapper wrapper(env, ind_class, pn_local,
+                    ipt_dof_idx, m_p_data->get_config().m_num_ss_dim);
+            result = m_p_unf_exp->compute_unfit_points(env, wrapper);
+        } else {
+            (void) throwException(env, ClassNotFoundException,
+                    "The requested individual is not found!");
+        }
     } else {
-        (void) throwException(m_log, env, ClassNotFoundException,
-                "The requested individual is not found!");
+        (void) throwException(env, IllegalStateException,
+                "The controller is not loaded!");
     }
-    
+
     return result;
 }
 

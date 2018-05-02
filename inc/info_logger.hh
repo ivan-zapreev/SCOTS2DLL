@@ -31,14 +31,16 @@
 
 using namespace std;
 
-#define LOG(LOGGER, MSG) \
+#define LOG(MSG) \
                 { \
                     time_t now = time(0);\
                     string time(ctime(&now));\
                     time = time.substr(0, time.length() - 1);\
                     {\
-                        lock_guard<recursive_mutex> guard(LOGGER.m_mutex); \
-                        LOGGER.m_log_file << time << "\b: " << MSG << std::flush << std::endl; \
+                        info_logger & log = get_log();\
+                        lock_guard<recursive_mutex> guard(log.m_mutex); \
+                        log.m_log_file << time << " " << __FILE__ << ":" \
+                        << __LINE__ << " > " << MSG << std::flush << std::endl; \
                     }\
                 }\
 
@@ -95,6 +97,34 @@ namespace tud {
                         }
                     }
                 };
+                
+                //Stores the info logger object
+                static info_logger m_log;
+
+                /**
+                 * Allows to (re-)open the info log
+                 * @param file_name the log file name
+                 */
+                inline void open_info_log(const char * file_name) {
+                    //Open logging
+                    m_log.open_log(file_name);
+                }
+
+                /**
+                 * Allows to get the info log object
+                 * @return the info log object
+                 */
+                inline info_logger & get_log() {
+                    return m_log;
+                }
+
+                /**
+                 * Allows to close the info log, if it is open
+                 */
+                inline void close_info_log() {
+                    m_log.close_log();
+                }
+                
             }
         }
     }

@@ -31,6 +31,7 @@
 #include "config_wrapper.hh"
 #include "data_source.hh"
 #include "ctrl_wrapper.hh"
+#include "sample_data_iter.hh"
 
 using namespace std;
 
@@ -49,8 +50,8 @@ namespace tud {
 
                 public:
 
-                    unfit_exporter(info_logger & log, data_source & data)
-                    : error_computer(log, data), m_unfit_bdd() {
+                    unfit_exporter(data_source & data)
+                    : error_computer(data), m_unfit_bdd() {
                     }
 
                     /**
@@ -67,7 +68,7 @@ namespace tud {
                      * @param env the environment
                      */
                     void start_unfit_export(JNIEnv * env) {
-                        LOG(m_log, "Starting unfit points export");
+                        LOG("Starting unfit points export");
                         //Re-initialize the unfit points BDD
                         m_unfit_bdd = m_data.m_p_cudd->bddZero();
                         //Make sure all the data points are pre-loaded,
@@ -83,7 +84,7 @@ namespace tud {
                      * @return the real (actual) fitness of the individual
                      */
                     double compute_unfit_points(JNIEnv * env, ctrl_wrapper & wrap) {
-                        LOG(m_log, "Starting unfit points export of " << wrap.get_name()
+                        LOG("Starting unfit points export of " << wrap.get_name()
                                 << " for dof " << wrap.get_dof_idx());
                         double result = 0.0;
 
@@ -92,11 +93,11 @@ namespace tud {
                             if ((dof_idx >= 0) && (dof_idx < (m_config.m_num_is_dim))) {
                                 result = add_unfit_points_to_bdd(env, wrap);
                             } else {
-                                (void) throwException(m_log, env, IllegalArgumentException,
+                                (void) throwException(env, IllegalArgumentException,
                                         "Improper input space dimension index!");
                             }
                         } else {
-                            (void) throwException(m_log, env, IllegalStateException,
+                            (void) throwException(env, IllegalStateException,
                                     "The state-space size is not set!");
                         }
 
@@ -109,7 +110,7 @@ namespace tud {
                      * @param file_name the BDD file name
                      */
                     void finish_unfit_export(JNIEnv * env, const char * file_name) {
-                        LOG(m_log, "Dumping unfit points into " << file_name);
+                        LOG("Dumping unfit points into " << file_name);
                         store_controller(*m_data.m_p_cudd,
                                 m_data.m_p_ss_mgr->get_states_set(),
                                 m_unfit_bdd, string(file_name));
@@ -130,22 +131,23 @@ namespace tud {
                         //The variables to store the number of fit and unfit points
                         long total = 0.0, unfit = 0.0;
 
-                        //Define the cursor
-                        double const * cursor = &m_data.m_all_data[0];
+                        //Instantiate the plain data iterator
+                        sample_data_iter data_iter(m_data, is_dof_idx);
+
+                        //Iterate over states and filter out the bad ones
+                        const double * state = NULL;
+                        double delta_err = DBL_MAX;
                         abs_type state_abs[m_config.m_num_ss_dim];
-                        while (cursor < m_data.m_cursor_max) {
+                        while (data_iter.next_state(state)) {
                             //Compute the state error
-                            double delta_err = DBL_MAX;
-                            const double ctr_value = wrap.compute_input(cursor, m_config.m_num_ss_dim);
-                            double const * state_dbl = cursor;
+                            const double ctr_value = wrap.compute_input(state);
                             //If there are nun of inf values or the error delta is
                             //larger than the maximum then this point is not fit.
-                            if (!compute_state_error(ctr_value, is_dof_idx, cursor, delta_err)
+                            if (!min_state_error(ctr_value, is_dof_idx, data_iter, delta_err)
                                     || (delta_err >= MAX_ATTRACTOR_SIZE)) {
                                 //Copy the values into the state array
                                 for (int idx = 0; idx < m_config.m_num_ss_dim; ++idx) {
-                                    state_abs[idx] = *state_dbl;
-                                    ++state_dbl;
+                                    state_abs[idx] = state[idx];
                                 }
 
                                 //Convert the abstract state to BDD and add to the total
@@ -158,7 +160,7 @@ namespace tud {
                             ++total;
                         }
 
-                        LOG(m_log, "The number of unfit points for dof "
+                        LOG("The number of unfit points for dof "
                                 << wrap.get_dof_idx() << " is " << unfit
                                 << "/" << total);
 

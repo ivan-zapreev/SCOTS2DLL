@@ -40,7 +40,6 @@ namespace tud {
 
                 /**
                  * This class represents a generic CTRL wrapper
-                public:
                  */
                 class ctrl_wrapper {
                 private:
@@ -49,19 +48,25 @@ namespace tud {
                     const jmethodID m_eval_mthd;
                     const string m_name;
                     const int m_ipt_dof_idx;
+                    const int m_ss_size;
+                    jdoubleArray m_args;
                 protected:
                 public:
 
                     /**
                      * Constructs a new controller wrapper for the java class
-                     * @param cpointer to jni environment
+                     * @param env to jni environment
                      * @param person_class the class to construct the wrapper for
+                     * @param name the individual class name
+                     * @param ipt_dof_idx the input dof index
+                     * @param ss_size the input state space size
                      */
                     ctrl_wrapper(JNIEnv * const env, const jclass & person_class,
-                            const string name, const jint ipt_dof_idx)
+                            const string name, const jint ipt_dof_idx, const int ss_size)
                     : m_env(env), m_person_class(person_class),
                     m_eval_mthd(m_env->GetStaticMethodID(m_person_class, "evaluate_0", "([D)D")),
-                    m_name(name), m_ipt_dof_idx(ipt_dof_idx) {
+                    m_name(name), m_ipt_dof_idx(ipt_dof_idx), m_ss_size(ss_size),
+                    m_args(m_env->NewDoubleArray(m_ss_size)) {
                     }
 
                     /**
@@ -85,10 +90,10 @@ namespace tud {
                      * @param state the state to call the method for
                      * @return the computed input value for this state
                      */
-                    inline double compute_input(const double *state, const int ss_size) {
-                        jdoubleArray args = m_env->NewDoubleArray(ss_size);
-                        m_env->SetDoubleArrayRegion(args, 0, ss_size, state);
-                        return m_env->CallStaticDoubleMethod(m_person_class, m_eval_mthd, args);
+                    inline double compute_input(const double *state) {
+                        m_env->SetDoubleArrayRegion(m_args, 0, m_ss_size, state);
+                        return m_env->CallStaticDoubleMethod(
+                                m_person_class, m_eval_mthd, m_args);
                     }
                 };
             }

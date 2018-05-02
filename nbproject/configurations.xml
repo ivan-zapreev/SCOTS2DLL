@@ -4,15 +4,20 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>inc/bdd_data_iter.hh</itemPath>
       <itemPath>inc/config_wrapper.hh</itemPath>
       <itemPath>inc/ctrl_wrapper.hh</itemPath>
+      <itemPath>inc/data_iter.hh</itemPath>
       <itemPath>inc/data_source.hh</itemPath>
       <itemPath>inc/error_computer.hh</itemPath>
       <itemPath>inc/fitness_computer.hh</itemPath>
       <itemPath>inc/info_logger.hh</itemPath>
       <itemPath>inc/jni_throw.hh</itemPath>
       <itemPath>inc/random_hypercube.hh</itemPath>
+      <itemPath>inc/sample_data_iter.hh</itemPath>
+      <itemPath>inc/scaled_ctrl_wrapper.hh</itemPath>
       <itemPath>inc/unfit_exporter.hh</itemPath>
+      <itemPath>inc/var_bisector.hh</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
                    displayName="Resource Files"
@@ -68,9 +73,13 @@
           <commandLine>-m64 -lcudd -lgsl</commandLine>
         </linkerTool>
       </compileType>
+      <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/data_iter.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/data_source.hh" ex="false" tool="3" flavor2="0">
       </item>
@@ -84,7 +93,13 @@
       </item>
       <item path="inc/random_hypercube.hh" ex="false" tool="3" flavor2="0">
       </item>
+      <item path="inc/sample_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/scaled_ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/var_bisector.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
       </item>
@@ -132,9 +147,13 @@
           <commandLine>-m64 -lcudd -O3 -lgsl</commandLine>
         </linkerTool>
       </compileType>
+      <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/data_iter.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="inc/data_source.hh" ex="false" tool="3" flavor2="0">
       </item>
@@ -148,7 +167,13 @@
       </item>
       <item path="inc/random_hypercube.hh" ex="false" tool="3" flavor2="0">
       </item>
+      <item path="inc/sample_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/scaled_ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/var_bisector.hh" ex="false" tool="3" flavor2="0">
       </item>
       <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
       </item>
