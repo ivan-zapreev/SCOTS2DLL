@@ -475,6 +475,10 @@ namespace tud {
                             uint64_t * state_abs, double * state_dbl,
                             raw_data & state, raw_data & inputs,
                             raw_data & sample_data, var_bisector * p_bisect = NULL) {
+                        LOG("Performing simple Monte-Carlo simulations "
+                                << "for sample size: " << sample_size << " "
+                                << (IS_BISECTOR ? "WITH" : "WITHOUT") << " bisector");
+
                         //Declare data containers
                         int64_t ext_smp_cnt = 0;
 
@@ -519,14 +523,15 @@ namespace tud {
                         //If the bisection dof could be found then split
                         if ((0 <= dim_idx) && (dim_idx < m_config.m_num_ss_dim)) {
                             //Get the bisection ratio
-                            const double ratio = bisect.get_lvr_ratio();
+                            const double ratio = bisect.get_lr_ratio();
 
                             //Get the sub hypercubes
                             random_hypercube * p_lc = NULL, * p_rc = NULL;
                             cube.bisect(dim_idx, p_lc, p_rc);
 
                             //Recursively go to left hypercube
-                            const int64_t lcs_size = sample_size * ratio
+                            const int64_t lcs_size =
+                                    static_cast<int64_t> (sample_size * ratio)
                                     - bisect.get_left_size();
                             prepare_sim_rss_data<IS_SCALE_FIT>(
                                     is_dof_idx, lcs_size, *p_lc,
@@ -535,7 +540,8 @@ namespace tud {
                             delete p_lc;
 
                             //Recursively go to right hypercube
-                            const int64_t rcs_size = sample_size - lcs_size
+                            const int64_t rcs_size =
+                                    sample_size - lcs_size
                                     - bisect.get_right_size();
                             prepare_sim_rss_data<IS_SCALE_FIT>(
                                     is_dof_idx, rcs_size, *p_rc,
@@ -573,6 +579,7 @@ namespace tud {
                         const int64_t bs_size = m_config.m_bisect_ratio*sample_size;
 
                         //Check if we need to proceed with bisection
+                        LOG("Checking on " << bs_size << " >= " << m_config.m_bisect_size);
                         if (bs_size >= m_config.m_bisect_size) {
                             //Declare the bisector
                             var_bisector bisect(cube, is_dof_idx);
@@ -582,6 +589,9 @@ namespace tud {
                             prepare_sim_mc_data<IS_SCALE_FIT, true>(
                                     bs_size, cube, samples, state_abs,
                                     state_dbl, state, inputs, sample_data, &bisect);
+
+                            //Indicate that the sampling is finished
+                            bisect.done_sampling();
 
                             //Bisect the hypercube based on the bisector statistics
                             prepare_sim_rss_data<IS_SCALE_FIT>(
@@ -637,9 +647,12 @@ namespace tud {
 
                         //Compute sample data in two ways, depending on whether it is RSS or not
                         if (m_config.m_is_rss) {
+                            sample_set samples;
                             //The RSS sample will be unique for each input dof
                             for (int is_dof_idx = 0; is_dof_idx < m_config.m_num_is_dim; ++is_dof_idx) {
-                                sample_set samples;
+                                LOG("Start RSS sample computation for dof: " << is_dof_idx);
+
+                                //Perform the RSS computations
                                 m_sample_data[is_dof_idx] = new raw_data();
                                 prepare_sim_rss_data<IS_SCALE_FIT>(
                                         is_dof_idx, sample_size, cube, samples,
@@ -647,9 +660,12 @@ namespace tud {
                                         *m_sample_data[is_dof_idx]);
                                 m_sample_size[is_dof_idx] = samples.size();
 
+                                //Clear the samples for the next dof
+                                samples.clear();
+
                                 LOG("Requested " << is_dof_idx << "-dof sample size: "
                                         << m_config.m_sample_size << ", actual "
-                                        << "sample size: " << m_sample_size[0]);
+                                        << "sample size: " << m_sample_size[is_dof_idx]);
                             }
                         } else {
                             //There will be just one sample for all input dofs
@@ -731,10 +747,11 @@ namespace tud {
                                 input_begin += m_config.m_num_is_dim;
                             }
 
-                            //Indicate the beginning of a new sample
+                            //Indicate the end of a the sample
                             if (IS_BISECTOR) {
-                                p_bisect->finish_sample();
+                                p_bisect->stop_sample();
                             }
+
                         } else {
                             result = false;
                         }

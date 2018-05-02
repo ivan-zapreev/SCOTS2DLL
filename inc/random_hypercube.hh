@@ -147,6 +147,30 @@ namespace tud {
                     }
 
                     /**
+                     * Allows to get the vector of lower left hypercube borders
+                     * @return the vector of lower left hypercube borders
+                     */
+                    const uint64_t* get_ll() const {
+                        return m_ll;
+                    }
+
+                    /**
+                     * Allows to get the vector of upper right hypercube borders
+                     * @return the vector of upper right hypercube borders
+                     */
+                    const uint64_t* get_ur() const {
+                        return m_ur;
+                    }
+
+                    /**
+                     * Allows to get the number of hypercube dimensions
+                     * @return the number of hypercube dimensions
+                     */
+                    inline int get_num_dim() const {
+                        return m_num_dim;
+                    }
+
+                    /**
                      * Allow to generate a new random point, not thread safe!
                      * @param dof_ids_abs the array to be filled in with the sample dof ids
                      * @param dof_ids_dbl the array to be filled in with the sample dof ids
@@ -167,27 +191,32 @@ namespace tud {
                             //        << ", " << m_ur[dof_idx] << "]");
                         }
                     }
-                    
+
                     /**
-                     * Allows to bisect the hypercube into two pieces
-                     * @param dim_idx the dimension to bisect in
-                     * @param left_cube the new left part of the hypercube
-                     * @param right_cube the new right part of the hypercube
-                     * @return true if the bisection was successful, otherwise false
+                     * Allows to split the interval in two sub-intervals
+                     * @param lb the left interval border
+                     * @param rb the right interval border
+                     * @param lb_r the right border of the new left interval
+                     * @param rb_l the left border of the new right interval
+                     * @return true if the interval could be split, otherwise false
                      */
-                    bool bisect(const int dim_idx,
-                            random_hypercube*&left_cube,
-                            random_hypercube*&right_cube) {
+                    inline static bool split_interval(
+                            const uint64_t lb, const uint64_t rb,
+                            uint64_t & lb_r, uint64_t & rb_l) {
                         bool result = true;
-                        //Get the values
-                        const uint64_t left_point = m_ll[dim_idx];
-                        const uint64_t right_point = m_ur[dim_idx];
-                        const uint64_t num_its = (right_point - left_point);
+
+                        LOG("Splitting interval [" << lb << ", " << rb << "]");
+
+                        //If the number of intervals is less than 3 then we can not split
+                        const uint64_t num_its = (rb - lb);
                         if (num_its >= 3) {
                             //Compute the mid point, is always rounded down
-                            const uint64_t mid_point = (right_point + left_point) / 2;
+                            const uint64_t mid_point = (rb + lb) / 2;
+
+                            LOG("Mid point of [" << lb << ", " << rb << "] is: " << mid_point);
+
                             //Compute the two new interval bounds
-                            uint64_t rb_l = mid_point, lb_r = mid_point;
+                            lb_r = mid_point, rb_l = mid_point;
                             //Check on the number of intervals
                             if (num_its % 2) {
                                 //The number of intervals is odd, so the mid point
@@ -205,16 +234,35 @@ namespace tud {
                                     lb_r += 1;
                                 }
                             }
+                        } else {
+                            result = false;
+                        }
+                        return result;
+                    }
 
+                    /**
+                     * Allows to bisect the hypercube into two pieces
+                     * @param dim_idx the dimension to bisect in
+                     * @param left_cube the new left part of the hypercube
+                     * @param right_cube the new right part of the hypercube
+                     * @return true if the bisection was successful, otherwise false
+                     */
+                    bool bisect(const int dim_idx,
+                            random_hypercube*&left_cube,
+                            random_hypercube*&right_cube) {
+                        bool result = true;
+                        //Try splitting the interval
+                        uint64_t lb_r = 0, rb_l = 0;
+                        if (split_interval(m_ll[dim_idx], m_ur[dim_idx], lb_r, rb_l)) {
                             //Allocate and initialize the left right interval border arrays
                             const size_t data_size = m_num_dim * sizeof (uint64_t);
-                            
+
                             uint64_t* ll_l = new uint64_t[m_num_dim];
                             memcpy(ll_l, m_ll, data_size);
                             uint64_t* ur_l = new uint64_t[m_num_dim];
                             memcpy(ur_l, m_ur, data_size);
                             ur_l[dim_idx] = rb_l;
-                            
+
                             uint64_t* ll_r = new uint64_t[m_num_dim];
                             memcpy(ll_r, m_ll, data_size);
                             uint64_t* ur_r = new uint64_t[m_num_dim];
