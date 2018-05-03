@@ -780,9 +780,12 @@ namespace tud {
                         //Define state and abstract state containers
                         raw_data state(m_config.m_num_ss_dim), inputs;
 
+                        LOG("Loading " << m_dom_size << " domain states...");
+                        
                         //Iterate over the states, get the corresponding
                         //inputs and add them to the estimator set by ids
                         auto state_begin = states.begin();
+                        int64_t new_cnt = 0, old_cnt = 0, state_cnt = 0;
                         while (state_begin != states.end()) {
                             //Get a new state vector
                             state.assign(state_begin, state_begin + m_config.m_num_ss_dim);
@@ -795,6 +798,14 @@ namespace tud {
 
                             //Move forward in the list of states
                             state_begin += m_config.m_num_ss_dim;
+
+                            //De the logging for convenience
+                            new_cnt = state_cnt * 100 / m_dom_size;
+                            if (new_cnt != old_cnt) {
+                                LOG("Have loaded " << new_cnt << "% of the domain states.");
+                                old_cnt = new_cnt;
+                            }
+                            ++state_cnt;
                         }
                     }
 
