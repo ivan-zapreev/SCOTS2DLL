@@ -780,8 +780,8 @@ namespace tud {
                         //Define state and abstract state containers
                         raw_data state(m_config.m_num_ss_dim), inputs;
 
-                        LOG("Loading " << m_dom_size << " domain states...");
-                        
+                        LOG("Starting to extract " << m_dom_size << " domain states...");
+
                         //Iterate over the states, get the corresponding
                         //inputs and add them to the estimator set by ids
                         auto state_begin = states.begin();
@@ -800,9 +800,10 @@ namespace tud {
                             state_begin += m_config.m_num_ss_dim;
 
                             //De the logging for convenience
-                            new_cnt = state_cnt * 100 / m_dom_size;
+                            new_cnt = state_cnt * 1000 / m_dom_size;
                             if (new_cnt != old_cnt) {
-                                LOG("Have loaded " << new_cnt << "% of the domain states.");
+                                LOG("Extracted " << ((double) new_cnt) / 10.0
+                                        << "% of the domain states.");
                                 old_cnt = new_cnt;
                             }
                             ++state_cnt;
