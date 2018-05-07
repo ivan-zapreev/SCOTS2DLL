@@ -52,39 +52,44 @@ namespace tud {
                     //Stores the configuration object reference
                     const config_wrapper & m_config;
 
+                    //Stores the number of input space dimensions
+                    const int m_is_dim;
+
                     /**
                      * Allows to compute the state error given the input from the candidate
-                     * @param ctr_value the control value for the state
-                     * @param is_dof_idx the dof index in the dof dimensions
+                     * @param input_cnt the control input vector values for the state as computed by the individual
                      * @param ipts_iter the inputs iterator for the original controller data
                      * @param delta_err the error to be computed
                      * @return if true then the error could be computed, otherwise false
                      */
                     template<typename IPTS_ITER_TYPE>
-                    bool min_state_error(const double ctr_value, const int is_dof_idx,
+                    bool min_state_error(const double * ind_input,
                             IPTS_ITER_TYPE & ipts_iter, double & delta_err) {
-                        bool result = true;
-
                         //Initialize the error
                         delta_err = DBL_MAX;
 
-                        //Do not proceed if there is a nan value
-                        if (!isnan(ctr_value) && !isinf(ctr_value)) {
-                            //Iterate over the inputs
-                            const double * input = NULL;
-                            while (ipts_iter.next_input(input)) {
-                                //Get the dof input value 
-                                const double act_value = input[is_dof_idx];
-                                //Compute the delta error
-                                delta_err = min(delta_err, abs(ctr_value - act_value));
+                        //Iterate over the inputs and compute the minimum 
+                        //(over all controller's state inputs) maximum 
+                        //(over all input vector dimensions) delta error
+                        const double * act_input = NULL;
+                        while (ipts_iter.next_input(act_input)) {
+                            //Compute the maximum dof error
+                            double max_dof_err = 0.0;
+                            for (int idx = 0; idx < m_is_dim; ++idx) {
+                                const double dof_error = abs(ind_input[idx] - act_input[idx]);
+                                max_dof_err = max(max_dof_err, dof_error);
                             }
-                        } else {
-                            LOG("ERROR: Individual control value is: " << ctr_value);
-                            result = false;
-                            //Skip the inputs data
-                            ipts_iter.skip_inputs_data();
+                            //Compute the delta error
+                            delta_err = min(delta_err, max_dof_err);
                         }
-                        return result;
+
+                        //Check that the delta error could be computed
+                        bool is_good = true;
+                        if (isnan(delta_err) || isinf(delta_err)) {
+                            LOG("ERROR: Bad individual, one of the inputs is NAN or INF");
+                            is_good = false;
+                        }
+                        return is_good;
                     }
 
                 public:
@@ -95,7 +100,8 @@ namespace tud {
                      * @param data the configured data source
                      */
                     error_computer(data_source & data)
-                    : m_data(data), m_config(m_data.get_config()) {
+                    : m_data(data), m_config(m_data.get_config()),
+                    m_is_dim(m_config.m_num_is_dim) {
                     }
 
                 };

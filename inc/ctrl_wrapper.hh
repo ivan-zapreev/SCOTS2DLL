@@ -47,9 +47,10 @@ namespace tud {
                     const jclass m_person_class;
                     const jmethodID m_eval_mthd;
                     const string m_name;
-                    const int m_ipt_dof_idx;
-                    const int m_ss_size;
-                    jdoubleArray m_args;
+                    const int m_ss_dim;
+                    const int m_is_dim;
+                    jdoubleArray m_state;
+                    jdoubleArray m_input;
                 protected:
                 public:
 
@@ -58,23 +59,35 @@ namespace tud {
                      * @param env to jni environment
                      * @param person_class the class to construct the wrapper for
                      * @param name the individual class name
-                     * @param ipt_dof_idx the input dof index
-                     * @param ss_size the input state space size
+                     * @param ss_size the number of state space dimensions
+                     * @param is_size the number of input space dimensions
                      */
                     ctrl_wrapper(JNIEnv * const env, const jclass & person_class,
-                            const string name, const jint ipt_dof_idx, const int ss_size)
+                            const string name, const int ss_dim, const int is_dim)
                     : m_env(env), m_person_class(person_class),
-                    m_eval_mthd(m_env->GetStaticMethodID(m_person_class, "evaluate_0", "([D)D")),
-                    m_name(name), m_ipt_dof_idx(ipt_dof_idx), m_ss_size(ss_size),
-                    m_args(m_env->NewDoubleArray(m_ss_size)) {
+                    m_eval_mthd(env->GetStaticMethodID(m_person_class, "evaluate", "([D[D)V")),
+                    m_name(name), m_ss_dim(ss_dim), m_is_dim(is_dim),
+                    m_state(env->NewDoubleArray(m_ss_dim)),
+                    m_input(env->NewDoubleArray(m_is_dim)){
                     }
-
+                    
+                    virtual ~ctrl_wrapper() {
+                    }
+                    
                     /**
-                     * Allows to get the input dof index
-                     * @return the input dof index
+                     * Allows to get the state-space dimensionality
+                     * @return the state-space dimensionality
                      */
-                    inline const int & get_dof_idx() const {
-                        return m_ipt_dof_idx;
+                    inline int get_ss_dim() {
+                        return m_ss_dim;
+                    }
+                    
+                    /**
+                     * Allows to get the input-space dimensionality
+                     * @return the input-space dimensionality
+                     */
+                    inline int get_is_dim() {
+                        return m_is_dim;
                     }
 
                     /**
@@ -90,10 +103,10 @@ namespace tud {
                      * @param state the state to call the method for
                      * @return the computed input value for this state
                      */
-                    inline double compute_input(const double *state) {
-                        m_env->SetDoubleArrayRegion(m_args, 0, m_ss_size, state);
-                        return m_env->CallStaticDoubleMethod(
-                                m_person_class, m_eval_mthd, m_args);
+                    inline void compute_input(const double *state, double * input) {
+                        m_env->SetDoubleArrayRegion(m_state, 0, m_ss_dim, state);
+                        m_env->CallVoidMethod(m_person_class, m_eval_mthd, m_state, m_input);
+                        m_env->GetDoubleArrayRegion(m_input, 0, m_is_dim, input);
                     }
                 };
             }

@@ -73,9 +73,9 @@ namespace tud {
                     int64_t m_dom_size;
 
                     //Stores the sample to use for fitting
-                    vector<raw_data*> m_sample_data;
+                    raw_data m_sample_data;
                     //Stores the data sample size
-                    vector<abs_type> m_sample_size;
+                    abs_type m_sample_size;
 
                 public:
                     //Stores the CUDD manager
@@ -118,7 +118,6 @@ namespace tud {
                         if (m_p_cudd) {
                             delete m_p_cudd;
                         }
-                        clear_sample_data(true);
                     }
 
                     /**
@@ -240,7 +239,10 @@ namespace tud {
                         //For numeric computations the plain data must
                         //have been fully loaded.
                         if (m_config.m_is_mc) {
-                            clear_sample_data(false);
+                            //Clear the sample data
+                            clear_sample_data();
+                            //Re-fill the sample with complete data,
+                            //no min/max computations are needed
                             prepare_num_data<false>();
                         }
                     }
@@ -271,31 +273,26 @@ namespace tud {
 
                     /**
                      * Allows to retrieve the sample size
-                     * @param is_dof_idx the input space dof index
                      * @return the sample size
                      */
-                    inline abs_type get_sample_size(const int is_dof_idx) const {
-                        return m_sample_size[is_dof_idx];
+                    inline abs_type get_sample_size() const {
+                        return m_sample_size;
                     }
 
                     /**
                      * Allows to get the start of the plain data
-                     * @param is_dof_idx the input space dof index
                      * @return the start of the plain data
                      */
-                    inline double const * get_sample_start(const int is_dof_idx) const {
-                        const raw_data & data = *m_sample_data[is_dof_idx];
-                        return &data[0];
+                    inline double const * get_sample_start() const {
+                        return &m_sample_data[0];
                     }
 
                     /**
                      * Allows to get the end of the plain data
-                     * @param is_dof_idx the input space dof index
                      * @return the end of the plain data
                      */
-                    inline double const * get_sample_end(const int is_dof_idx) const {
-                        const raw_data & data = *m_sample_data[is_dof_idx];
-                        return &data[data.size() - 1] + 1;
+                    inline double const * get_sample_end() const {
+                        return &m_sample_data[m_sample_data.size() - 1] + 1;
                     }
 
                 private:
@@ -306,26 +303,9 @@ namespace tud {
                      * Allows to clear the sample data
                      * @param is_final if true then this is a final clean-up
                      */
-                    void clear_sample_data(const bool is_final) {
-                        //Deallocate the stored raw data, take
-                        //care of when the data is the same
-                        raw_data * prev = NULL;
-                        for (auto curr : m_sample_data) {
-                            if (curr != prev) {
-                                delete curr;
-                            }
-                            prev = curr;
-                        }
-
-                        //If this is not a final clean-up then re-initialize
-                        if (!is_final) {
-                            m_sample_data.clear();
-                            m_sample_size.clear();
-
-                            //Reserve elements for the sample data and sizes
-                            m_sample_data.reserve(m_config.m_num_is_dim);
-                            m_sample_size.reserve(m_config.m_num_is_dim);
-                        }
+                    void clear_sample_data() {
+                        m_sample_data.clear();
+                        m_sample_size = 0;
                     }
 
                     /**
@@ -349,7 +329,7 @@ namespace tud {
                                 m_p_is_mgr->get_inputs_set());
 
                         //Clear the old data points
-                        clear_sample_data(false);
+                        clear_sample_data();
 
                         //Set the number of states value
                         m_dom_size = m_p_ss_mgr->get_size();
@@ -406,15 +386,13 @@ namespace tud {
                      * @param state the container for storing the state
                      * @param inputs the temporary container for the state inputs
                      * @param call_back the call back object to use if the sample is added
-                     * @param sample_data the vector the sample data to be stored into
                      * @param p_bisect the pointer to the bisector, if IS_BISECTOR is true or NULL, default to NULL
                      * @return true if this is a valid domain state and thus was stored
                      */
                     template<bool IS_SCALE_FIT, bool IS_BISECTOR>
                     bool store_dom_state_data(uint64_t const * state_abs,
                             double const * state_dbl, raw_data & state,
-                            raw_data & inputs, raw_data & sample_data,
-                            var_bisector * p_bisect = NULL) {
+                            raw_data & inputs, var_bisector * p_bisect = NULL) {
                         //Compute the actual state
                         m_p_ss_mgr->Itox(state_abs, state);
 
@@ -423,7 +401,7 @@ namespace tud {
 
                         //Register the data if it from the domain, i.e. there are inputs
                         return register_plain_data<IS_SCALE_FIT, IS_BISECTOR>(
-                                state, inputs, sample_data, p_bisect);
+                                state, inputs, p_bisect);
                     }
 
                     /**
@@ -433,7 +411,6 @@ namespace tud {
                      * @param samples the set storing all the unique sample element ids
                      * @param state the container for storing the state
                      * @param inputs the temporary container for the state inputs
-                     * @param sample_data the vector the sample data to be stored into
                      * @param p_bisect the pointer to the bisector, if IS_BISECTOR is true or NULL, default to NULL
                      * @return true if this is a new valid domain state, otherwise false
                      */
@@ -441,7 +418,7 @@ namespace tud {
                     bool cache_sample_element(uint64_t const * state_abs,
                             double const * state_dbl, sample_set & samples,
                             raw_data & state, raw_data & inputs,
-                            raw_data & sample_data, var_bisector * p_bisect = NULL) {
+                            var_bisector * p_bisect = NULL) {
                         bool is_valid = false;
                         abs_type state_id;
                         //Check if the point is on the grid (this is more a safety check)
@@ -451,7 +428,7 @@ namespace tud {
                             if (res.second) {
                                 //Store the point if it is in the domain
                                 is_valid = store_dom_state_data<IS_SCALE_FIT, IS_BISECTOR>(
-                                        state_abs, state_dbl, state, inputs, sample_data, p_bisect);
+                                        state_abs, state_dbl, state, inputs, p_bisect);
                                 //Check if the point turned out to be 
                                 //not from the domain then remove it
                                 if (!is_valid) {
@@ -471,7 +448,6 @@ namespace tud {
                      * @param state_dbl internal temporary container for state abstract vector as double
                      * @param state internal temporary container for real state vector
                      * @param inputs internal temporary container for real input vectors
-                     * @param sample_data the vector the sample data to be stored into
                      * @param p_bisect the pointer to the bisector, if IS_BISECTOR is true or NULL, default to NULL
                      */
                     template<bool IS_SCALE_FIT, bool IS_BISECTOR>
@@ -480,7 +456,7 @@ namespace tud {
                             random_hypercube & cube, sample_set & samples,
                             uint64_t * state_abs, double * state_dbl,
                             raw_data & state, raw_data & inputs,
-                            raw_data & sample_data, var_bisector * p_bisect = NULL) {
+                            var_bisector * p_bisect = NULL) {
                         LOG("Monte-Carlo simulations, sample size: " << sample_size << " "
                                 << (IS_BISECTOR ? "WITH" : "WITHOUT") << " bisector");
 
@@ -493,7 +469,7 @@ namespace tud {
                             //Cache the domain state with its inputs
                             if (cache_sample_element<IS_SCALE_FIT, IS_BISECTOR>(
                                     state_abs, state_dbl, samples, state,
-                                    inputs, sample_data, p_bisect)) {
+                                    inputs, p_bisect)) {
                                 //Increment the sample count
                                 ++ext_smp_cnt;
                             }
@@ -502,7 +478,6 @@ namespace tud {
 
                     /**
                      * Allows to bisect the current hypercube and to Recursion into the sub-cubes
-                     * @param is_dof_idx the input space dof index for which the sample is computed
                      * @param sample_size the desired sample size
                      * @param bisect the bisector with some pre-sampled data for bisection
                      * @param cube the random hypercube to sample from
@@ -511,15 +486,14 @@ namespace tud {
                      * @param state_dbl internal temporary container for state abstract vector as double
                      * @param state internal temporary container for real state vector
                      * @param inputs internal temporary container for real input vectors
-                     * @param sample_data the vector the sample data to be stored into
                      */
                     template<bool IS_SCALE_FIT>
                     void prepare_sim_rss_data(
-                            const int is_dof_idx, const int64_t sample_size,
+                            const int64_t sample_size,
                             var_bisector & bisect, random_hypercube & cube,
                             sample_set & samples, uint64_t * state_abs,
                             double * state_dbl, raw_data & state,
-                            raw_data & inputs, raw_data & sample_data) {
+                            raw_data & inputs) {
                         LOG("Remaining sample size: " << sample_size);
 
                         //If the bisection dof could be found then split
@@ -540,29 +514,26 @@ namespace tud {
                             //Recursively go to left hypercube
                             const int64_t lcs_size = sample_size * ratio;
                             prepare_sim_rss_data<IS_SCALE_FIT>(
-                                    is_dof_idx, lcs_size, *p_lc,
-                                    samples, state_abs, state_dbl,
-                                    state, inputs, sample_data);
+                                    lcs_size, *p_lc, samples, state_abs,
+                                    state_dbl, state, inputs);
                             delete p_lc;
 
                             //Recursively go to right hypercube
                             const int64_t rcs_size = sample_size - lcs_size;
                             prepare_sim_rss_data<IS_SCALE_FIT>(
-                                    is_dof_idx, rcs_size, *p_rc,
-                                    samples, state_abs, state_dbl,
-                                    state, inputs, sample_data);
+                                    rcs_size, *p_rc, samples, state_abs,
+                                    state_dbl, state, inputs);
                             delete p_rc;
                         } else {
                             //The bisection is not needed, just proceed with regular MC
                             prepare_sim_mc_data<IS_SCALE_FIT, false>(
                                     sample_size, cube, samples, state_abs,
-                                    state_dbl, state, inputs, sample_data);
+                                    state_dbl, state, inputs);
                         }
                     }
 
                     /**
                      * Allows to prepare data for the Monte-Carlo Recursive Stratified Sampling fitness
-                     * @param is_dof_idx the input space dof index for which the sample is computed
                      * @param sample_size the desired sample size
                      * @param cube the random hypercube to sample from
                      * @param samples the set to store sample state ids
@@ -570,15 +541,13 @@ namespace tud {
                      * @param state_dbl internal temporary container for state abstract vector as double
                      * @param state internal temporary container for real state vector
                      * @param inputs internal temporary container for real input vectors
-                     * @param sample_data the vector the sample data to be stored into
                      */
                     template<bool IS_SCALE_FIT>
                     void prepare_sim_rss_data(
-                            const int is_dof_idx, const int64_t sample_size,
+                            const int64_t sample_size,
                             random_hypercube & cube, sample_set & samples,
                             uint64_t * state_abs, double * state_dbl,
-                            raw_data & state, raw_data & inputs,
-                            raw_data & sample_data) {
+                            raw_data & state, raw_data & inputs) {
                         LOG("Remaining sample size: " << sample_size);
 
                         //Compute the bisection sample size
@@ -586,13 +555,13 @@ namespace tud {
                         //Check if we can proceed bisecting
                         if (bs_size >= m_config.m_bisect_size) {
                             //Declare the bisector
-                            var_bisector bisect(cube, is_dof_idx);
+                            var_bisector bisect(cube, m_p_is_mgr->get_dim());
 
                             //Do the simple MC generation with the new sample
                             //registration inside the bisector
                             prepare_sim_mc_data<IS_SCALE_FIT, true>(
                                     bs_size, cube, samples, state_abs,
-                                    state_dbl, state, inputs, sample_data, &bisect);
+                                    state_dbl, state, inputs, &bisect);
 
                             //Indicate that the sampling is finished
                             bisect.done_sampling();
@@ -601,25 +570,13 @@ namespace tud {
                             //Notice that the sample size is to be reduced by the
                             //number of bisection samples used to decide on bisection
                             prepare_sim_rss_data<IS_SCALE_FIT>(
-                                    is_dof_idx, sample_size - bs_size, bisect,
-                                    cube, samples, state_abs, state_dbl, state,
-                                    inputs, sample_data);
+                                    sample_size - bs_size, bisect, cube, samples,
+                                    state_abs, state_dbl, state, inputs);
                         } else {
                             //The bisection is not needed, just proceed with regular MC
                             prepare_sim_mc_data<IS_SCALE_FIT, false>(
                                     sample_size, cube, samples, state_abs,
-                                    state_dbl, state, inputs, sample_data);
-                        }
-                    }
-
-                    /**
-                     * Allows to propagate sample data from input dof 0 into all others
-                     */
-                    void propagate_sample_data() {
-                        for (int is_dof_idx = 1; is_dof_idx < m_config.m_num_is_dim; ++is_dof_idx) {
-                            m_sample_size[is_dof_idx] = m_sample_size[is_dof_idx - 1];
-                            //Set the actual sample size
-                            m_sample_size[is_dof_idx] = m_sample_size[is_dof_idx - 1];
+                                    state_dbl, state, inputs);
                         }
                     }
 
@@ -652,44 +609,21 @@ namespace tud {
                         double state_dbl[m_config.m_num_ss_dim];
                         raw_data state(m_config.m_num_ss_dim), inputs;
 
-                        //Compute sample data in two ways, depending on whether it is RSS or not
+                        //Compute sample data for plain MC or RSS
+                        sample_set samples;
                         if (m_config.m_is_rss) {
-                            sample_set samples;
-                            //The RSS sample will be unique for each input dof
-                            for (int is_dof_idx = 0; is_dof_idx < m_config.m_num_is_dim; ++is_dof_idx) {
-                                LOG("Start RSS sample computation for dof: " << is_dof_idx);
-
-                                //Perform the RSS computations
-                                m_sample_data[is_dof_idx] = new raw_data();
-                                prepare_sim_rss_data<IS_SCALE_FIT>(
-                                        is_dof_idx, sample_size, cube, samples,
-                                        state_abs, state_dbl, state, inputs,
-                                        *m_sample_data[is_dof_idx]);
-                                m_sample_size[is_dof_idx] = samples.size();
-
-                                //Clear the samples for the next dof
-                                samples.clear();
-
-                                LOG("Requested " << is_dof_idx << "-dof sample size: "
-                                        << m_config.m_sample_size << ", actual "
-                                        << "sample size: " << m_sample_size[is_dof_idx]);
-                            }
+                            prepare_sim_rss_data<IS_SCALE_FIT>(
+                                    sample_size, cube, samples, state_abs,
+                                    state_dbl, state, inputs);
                         } else {
-                            //There will be just one sample for all input dofs
-                            sample_set samples;
-                            m_sample_data[0] = new raw_data();
                             prepare_sim_mc_data<IS_SCALE_FIT, false>(
-                                    sample_size, cube, samples,
-                                    state_abs, state_dbl, state, inputs,
-                                    *m_sample_data[0]);
-                            m_sample_size[0] = samples.size();
-
-                            //Assign the same data to all dofs
-                            propagate_sample_data();
-
-                            LOG("Re-computed sample size: " << sample_size
-                                    << ", actual sample size: " << m_sample_size[0]);
+                                    sample_size, cube, samples, state_abs,
+                                    state_dbl, state, inputs);
                         }
+                        m_sample_size = samples.size();
+
+                        LOG("Re-computed sample size: " << sample_size
+                                << ", actual sample size: " << m_sample_size);
 
                         //Post-process min/max values
                         post_process_min_max<IS_SCALE_FIT>();
@@ -699,14 +633,14 @@ namespace tud {
                      * Allows to register the state inputs data
                      * @param state the actual state
                      * @param inputs the list of the state's actual inputs
-                     * @param sample_data the sample data to be extended
                      * @param p_bisect the pointer to the bisector, if IS_BISECTOR is true or NULL, default to NULL
                      * @return true if the state has inputs
                      */
                     template<bool IS_SCALE_FIT, bool IS_BISECTOR>
                     bool register_plain_data(
-                            const raw_data & state, const raw_data & inputs,
-                            raw_data & sample_data, var_bisector * p_bisect = NULL) {
+                            const raw_data & state,
+                            const raw_data & inputs,
+                            var_bisector * p_bisect = NULL) {
                         //Define the result
                         bool result = true;
 
@@ -720,7 +654,7 @@ namespace tud {
                             //If we need to store all data explicitly for numeric fitness computations
                             //Convert state to abstract state and add to data
                             m_p_ss_mgr->xtois(state, astate);
-                            sample_data.insert(sample_data.end(), astate.begin(), astate.end());
+                            m_sample_data.insert(m_sample_data.end(), astate.begin(), astate.end());
 
                             //Indicate the beginning of a new sample
                             if (IS_BISECTOR) {
@@ -729,7 +663,7 @@ namespace tud {
 
                             //Get the number of inputs and add to the data
                             const int ips_cnt = inputs.size() / m_config.m_num_is_dim;
-                            sample_data.push_back(ips_cnt);
+                            m_sample_data.push_back(ips_cnt);
 
                             //Iterate over the inputs
                             auto input_begin = inputs.begin();
@@ -740,11 +674,12 @@ namespace tud {
                                 //Convert state to abstract state and add to data
                                 m_p_is_mgr->xtois(input, ainput);
                                 //If we need to store all data explicitly for numeric fitness computations
-                                sample_data.insert(sample_data.end(), ainput.begin(), ainput.end());
+                                m_sample_data.insert(m_sample_data.end(), ainput.begin(), ainput.end());
 
-                                //Add a new state input
+                                //Add a new state input to the bisector, if needed
                                 if (IS_BISECTOR) {
-                                    p_bisect->add_input(ainput);
+                                    abs_type input_id = m_p_is_mgr->xtoi(ainput);
+                                    p_bisect->add_input(input_id, ainput);
                                 }
 
                                 //Update the min/max values
@@ -767,12 +702,14 @@ namespace tud {
 
                     /**
                      * Allows to convert the points array into the internal data structures
-                     * @param num_pg the number of points in the array
-                     * @param arr_gp the points array
-                     * @return the number of states
                      */
                     template<bool IS_SCALE_FIT>
-                    void prepare_num_data(raw_data & sample_data) {
+                    void prepare_num_data() {
+                        LOG("Start extracting grid points");
+
+                        //Pre-set min/max values
+                        pre_set_min_max<IS_SCALE_FIT>();
+
                         //Get the number the states with inputs
                         raw_data states;
                         m_p_ss_mgr->get_points(states);
@@ -794,7 +731,7 @@ namespace tud {
                             m_p_ctr->restriction(*m_p_cudd, *m_p_ctrl_bdd, state, inputs);
 
                             //Register data
-                            register_plain_data<IS_SCALE_FIT, false>(state, inputs, sample_data);
+                            register_plain_data<IS_SCALE_FIT, false>(state, inputs);
 
                             //Move forward in the list of states
                             state_begin += m_config.m_num_ss_dim;
@@ -808,30 +745,9 @@ namespace tud {
                             }
                             ++state_cnt;
                         }
-                    }
 
-                    /**
-                     * Allows to convert the points array into the internal data structures
-                     * @param num_pg the number of points in the array
-                     * @param arr_gp the points array
-                     * @return the number of states
-                     */
-                    template<bool IS_SCALE_FIT>
-                    void prepare_num_data() {
-                        LOG("Start extracting grid points");
-
-                        //Pre-set min/max values
-                        pre_set_min_max<IS_SCALE_FIT>();
-
-                        //Get the sample data
-                        m_sample_data[0] = new raw_data();
-                        prepare_num_data<IS_SCALE_FIT>(*m_sample_data[0]);
-                        m_sample_size[0] = m_p_ss_mgr->get_size();
-
-                        //Assign the same data to all dofs
-                        propagate_sample_data();
-
-                        LOG("The data sample size: " << m_sample_size[0]);
+                        m_sample_size = m_p_ss_mgr->get_size();
+                        LOG("The data sample size: " << m_sample_size);
 
                         //Post-process min/max values
                         post_process_min_max<IS_SCALE_FIT>();

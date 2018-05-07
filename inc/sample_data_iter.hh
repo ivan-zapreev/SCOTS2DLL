@@ -44,8 +44,6 @@ namespace tud {
                  */
                 class sample_data_iter : public data_iter {
                 private:
-                    //Stores the input space dof index
-                    const int m_is_dof_idx;
                     //Stores the current cursor
                     double const * m_cursor;
                     //Stores the current state inputs count
@@ -71,10 +69,9 @@ namespace tud {
                      * The basic constructor
                      * 
                      * @param data the data source to be used
-                     * @param is_dof_idx the input space dof index
                      */
-                    sample_data_iter(const data_source & data, const int is_dof_idx)
-                    : data_iter(data), m_is_dof_idx(is_dof_idx) {
+                    sample_data_iter(const data_source & data)
+                    : data_iter(data) {
                         reset();
                     }
 
@@ -83,22 +80,14 @@ namespace tud {
                      * @return the sample size
                      */
                     inline abs_type get_sample_size() const {
-                        return m_data.get_sample_size(m_is_dof_idx);
-                    }
-
-                    /**
-                     * Allows to get the input space dof index for which this data is.
-                     * @return the input space dof index
-                     */
-                    inline int get_is_dof_idx() {
-                        return m_is_dof_idx;
+                        return m_data.get_sample_size();
                     }
 
                     /**
                      * Allows to reset the iterator to start from the beginning
                      */
                     inline void reset() {
-                        m_cursor = m_data.get_sample_start(m_is_dof_idx);
+                        m_cursor = m_data.get_sample_start();
                         m_ips_cnt = 0;
                         m_ips_idx = 0;
                     }
@@ -109,7 +98,7 @@ namespace tud {
                      * @return true if there is still data to iterate
                      */
                     inline bool has_data() {
-                        return (m_cursor < m_data.get_sample_end(m_is_dof_idx));
+                        return (m_cursor < m_data.get_sample_end());
                     }
 
                     /**
@@ -166,10 +155,11 @@ namespace tud {
                     /**
                      * Once the state is read we can skip to the next state by
                      * skipping the inputs corresponding to the last read states.
+                     * This method also works if some of the inputs have already been read.
                      */
                     inline void skip_inputs_data() {
                         //Shift through the inputs part
-                        m_cursor += m_config.m_num_is_dim * m_ips_cnt;
+                        m_cursor += m_config.m_num_is_dim * (m_ips_cnt - m_ips_idx);
                     }
 
                 };

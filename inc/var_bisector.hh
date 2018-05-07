@@ -30,6 +30,7 @@
 #include <vector>
 #include <cmath>
 #include <unordered_set>
+#include <unordered_map>
 
 #include "jni_throw.hh"
 #include "info_logger.hh"
@@ -57,9 +58,16 @@ namespace tud {
                 typedef pair<cube_info, cube_info> split_info;
                 //Is used to store the set of distinct input values
                 typedef unordered_set<uint64_t> inputs_set;
+                //The vector of the input's abstract dof indexes
+                typedef vector<uint64_t> abs_data;
 
                 /**
-                 * This class allows to perform the variance-based bisection of the hypercube
+                 * This class allows to perform the variance-based bisection of the hypercube.
+                 * 1. Stores unique input id for counting inputs
+                 * 2. Stores pointer to the abstract vector input
+                 * 3. Computes input variance per component
+                 * 4. Takes the norm of the variance vector
+                 * 5. Uses this scalar value to choose bisection
                  */
                 class var_bisector {
                 public:
@@ -75,13 +83,10 @@ namespace tud {
                 private:
                     //Stores the reference to the corresponding random hypercube
                     const random_hypercube & m_cube;
-                    //Stores the input space dof index for 
-                    //which the variance bisection will be done
-                    const int m_is_dof_idx;
 
                     //Stores the bisection right interval left border values
                     //per state-space dof or 0 if bisection is not possible
-                    vector<uint64_t> m_split_rlb;
+                    abs_data m_split_rlb;
                     //Stores the split sets per dof to count 
                     //inputs to choose the best bisection
                     vector<split_info> m_splits;
@@ -92,6 +97,11 @@ namespace tud {
                     //This vector is used to store the distinct inputs 
                     //per dof per left/right bisection interval
                     vector<inputs_set> m_state_lr_ips;
+
+                    //Is used to store the mapping of the input id into the input vector abstract states
+                    unordered_map<uint64_t, abs_data> m_inputs;
+                    //Stores the number of input space dimension
+                    const int m_is_dim;
 
                     //The dof will be chosen after
                     int m_ch_dof_idx;
@@ -156,19 +166,22 @@ namespace tud {
                     }
 
                     /**
-                     * Allows to increment the input count for the given set
-                     * @param set the set to work with
-                     * @param input the input whoes count is to be incremented
+                     * Allows to increment the input count for the given input
+                     * if it is seen for the first time for the given state.
+                     * @param inputs the set of inputs for the given state
+                     * @param cnt_map the map storing counts per input
+                     * @param input the input value
                      */
-                    void increment_count_if_new(inputs_set & inputs, ips_counts & set, const uint64_t input) {
+                    void increment_count_if_new(
+                            inputs_set & inputs, ips_counts & cnt_map, const uint64_t input) {
                         //Insert the input into the state inputs tracking set
                         const auto reg = inputs.insert(input);
                         //If this input has not been seen yet (the insertion was done)
                         if (reg.second) {
-                            //Update the global inputs count
-                            auto it = set.find(input);
-                            if (it == set.end()) {
-                                set.insert({input, 1});
+                            //Update the global count for the given input
+                            auto it = cnt_map.find(input);
+                            if (it == cnt_map.end()) {
+                                cnt_map.insert({input, 1});
                             } else {
                                 ++(it->second);
                             }
@@ -176,41 +189,66 @@ namespace tud {
                     }
 
                     /**
-                     * Allows to compute the root of variance based on the given sample set
+                     * Allows to compute the root of a variance based on the given sample set.
+                     * Computes the vector of variance values for each input vector component.
+                     * Then a simple Euclidean norm of the vector is taken as the input's variance.
+                     * The cubic root of the variance is taken as described in Chapter 7
+                     * "Recursive Stratified Sampling" of the book:
+                     * "Numerical Recipes in C: The Art of Scientific Computing".
                      * @param counts the input counts to compute the root variance from
                      * @param root_var the root of the variance to be set
                      * @return true if the variance could be computed, otherwise false
                      */
-                    inline bool get_root_variance(const ips_counts & counts, double & root_var) {
+                    inline bool compute_root_variance(const ips_counts & counts, double & root_var) {
                         //See if we can compute the mean first
                         bool is_can_compute = (counts.size() > 0);
                         LOG("Inputs count: " << counts.size()
                                 << ", compute mean (?): " << is_can_compute);
+
                         if (is_can_compute) {
-                            //Compute the mean value
-                            double count = 0.0;
-                            double mean = 0.0;
+                            //Compute the mean values vector
+                            double sample_size = 0.0;
+                            vector<double> mean_sum(m_is_dim, 0.0);
                             for (auto elem : counts) {
-                                mean += elem.first * elem.second;
-                                count += elem.second;
+                                //Get the actual inputs vector from the input id
+                                const abs_data & data = m_inputs[elem.first];
+                                //Compute the mean sum as a vector, per coordinate
+                                for (int idx = 0; idx < m_is_dim; ++idx) {
+                                    //We take into account the number of times this input was seen 
+                                    mean_sum[idx] += data[idx] * elem.second;
+                                }
+                                sample_size += elem.second;
                             }
-                            mean = mean / count;
 
                             //Check if the sample variance can be computed
-                            is_can_compute = (count > 1.0);
-                            LOG("Sample count: " << count
+                            is_can_compute = (sample_size > 1.0);
+                            LOG("Sample count: " << sample_size
                                     << ", compute variance (?): " << is_can_compute);
+
                             if (is_can_compute) {
-                                //Compute the sample variance
-                                root_var = 0.0;
+                                //Compute the partial sample variance
+                                vector<double> var_sum(m_is_dim, 0.0);
                                 for (auto elem : counts) {
-                                    const double delta = (elem.first * elem.second - mean);
-                                    root_var += delta * delta;
+                                    //Get the actual inputs vector from the input id
+                                    const abs_data & data = m_inputs[elem.first];
+                                    //Compute the variance sum as a vector, per coordinate
+                                    for (int idx = 0; idx < m_is_dim; ++idx) {
+                                        const double mean = mean_sum[idx] / sample_size;
+                                        //We take into account the number of times this input was seen 
+                                        var_sum[idx] += pow(data[idx] - mean, 2) * elem.second;
+                                    }
                                 }
-                                root_var = root_var / (count - 1.0);
+
+                                //Compute the Euclidean norm of the variance vector
+                                double norm_var = 0.0;
+                                for (int idx = 0; idx < m_is_dim; ++idx) {
+                                    const double var = var_sum[idx] / (sample_size - 1.0);
+                                    norm_var += pow(var, 2);
+                                }
+                                norm_var = sqrt(norm_var);
 
                                 //Compute the root of the variance
-                                root_var = pow(root_var, 1.0 / (1.0 + RSS_ALPHA));
+                                root_var = pow(norm_var, 1.0 / (1.0 + RSS_ALPHA));
                             }
                         }
 
@@ -222,10 +260,10 @@ namespace tud {
                     /**
                      * The basic constructor allowing to initialize the bisector based on the hypercube
                      * @param cube the hypercube to base the initialization on
-                     * @param is_dof_idx the input dof index for variance computations
+                     * @param is_dim the number of input space dimensions
                      */
-                    var_bisector(const random_hypercube & cube, const int is_dof_idx)
-                    : m_cube(cube), m_is_dof_idx(is_dof_idx), m_lr_ratio(NO_LR_RATIO),
+                    var_bisector(const random_hypercube & cube, const int is_dim)
+                    : m_cube(cube), m_lr_ratio(NO_LR_RATIO), m_inputs(), m_is_dim(is_dim),
                     m_ch_dof_idx(UNDEFINED_DOF_IDX), m_left_size(0), m_right_size(0) {
                         //Get the number of dofs
                         const int num_dofs = m_cube.get_num_dim();
@@ -271,7 +309,7 @@ namespace tud {
                      * Allows to start a new sample
                      * @param state_abs the abstract state
                      */
-                    inline void start_sample(const vector<uint64_t> & state_abs) {
+                    inline void start_sample(const abs_data & state_abs) {
                         //Get the number of dofs
                         const int num_dofs = m_cube.get_num_dim();
                         //Iterate over all dofs and decide into which side of
@@ -290,12 +328,18 @@ namespace tud {
                     }
 
                     /**
-                     * Allows to add a new sample state input
-                     * @param input_abs the abstract input
+                     * Allows to add a new sample state input.
+                     * Stores unique input id for counting inputs
+                     * Stores the corresponding abstract vector input values
+                     * @param input the unique input id
+                     * @param data the input's dof abstract coordinates
                      */
-                    inline void add_input(const vector<uint64_t> & input_abs) {
-                        //Get the input to be classified
-                        const uint64_t input = input_abs[m_is_dof_idx];
+                    inline void add_input(uint64_t input, const abs_data & data) {
+                        //Insert the input if it is not present yet
+                        if (m_inputs.find(input) == m_inputs.end()) {
+                            m_inputs[input] = data;
+                        }
+
                         //Get the number of dofs
                         const int num_dofs = m_cube.get_num_dim();
                         //Iterate over the dofs and register it in a proper sets
@@ -368,8 +412,8 @@ namespace tud {
                                 const cube_info & right_cube = lr_sets.second;
                                 double left_var = 0.0, right_var = 0.0;
                                 //If both variance values can be computed
-                                if (get_root_variance(left_cube.second, left_var)
-                                        && get_root_variance(right_cube.second, right_var)) {
+                                if (compute_root_variance(left_cube.second, left_var)
+                                        && compute_root_variance(right_cube.second, right_var)) {
                                     const double lr_ratio = left_var / (left_var + right_var);
                                     //Check if the new ratio is larger than the old one
                                     if (abs(lr_ratio - NO_LR_RATIO) > abs(m_lr_ratio - NO_LR_RATIO)) {

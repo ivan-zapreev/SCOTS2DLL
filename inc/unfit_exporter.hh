@@ -84,18 +84,11 @@ namespace tud {
                      * @return the real (actual) fitness of the individual
                      */
                     double compute_unfit_points(JNIEnv * env, ctrl_wrapper & wrap) {
-                        LOG("Starting unfit points export of " << wrap.get_name()
-                                << " for dof " << wrap.get_dof_idx());
+                        LOG("Starting unfit points export of " << wrap.get_name());
                         double result = 0.0;
 
                         if (m_config.m_num_ss_dim > 0) {
-                            const int dof_idx = wrap.get_dof_idx();
-                            if ((dof_idx >= 0) && (dof_idx < (m_config.m_num_is_dim))) {
-                                result = add_unfit_points_to_bdd(env, wrap);
-                            } else {
-                                (void) throwException(env, IllegalArgumentException,
-                                        "Improper input space dimension index!");
-                            }
+                            result = add_unfit_points_to_bdd(env, wrap);
                         } else {
                             (void) throwException(env, IllegalStateException,
                                     "The state-space size is not set!");
@@ -126,24 +119,23 @@ namespace tud {
                      * @param wrap the controller's wrapper
                      */
                     double add_unfit_points_to_bdd(JNIEnv * env, ctrl_wrapper & wrap) {
-                        //Get the dof index relative to the largest state dof index
-                        const int is_dof_idx = wrap.get_dof_idx();
                         //The variables to store the number of fit and unfit points
                         long total = 0.0, unfit = 0.0;
 
                         //Instantiate the plain data iterator
-                        sample_data_iter data_iter(m_data, is_dof_idx);
+                        sample_data_iter data_iter(m_data);
 
                         //Iterate over states and filter out the bad ones
                         const double * state = NULL;
+                        double ind_input[m_data.get_config().m_num_is_dim];
                         double delta_err = DBL_MAX;
                         abs_type state_abs[m_config.m_num_ss_dim];
                         while (data_iter.next_state(state)) {
-                            //Compute the state error
-                            const double ctr_value = wrap.compute_input(state);
+                            //Compute the state input
+                            wrap.compute_input(state, ind_input);
                             //If there are nun of inf values or the error delta is
                             //larger than the maximum then this point is not fit.
-                            if (!min_state_error(ctr_value, is_dof_idx, data_iter, delta_err)
+                            if (!min_state_error(ind_input, data_iter, delta_err)
                                     || (delta_err >= MAX_ATTRACTOR_SIZE)) {
                                 //Copy the values into the state array
                                 for (int idx = 0; idx < m_config.m_num_ss_dim; ++idx) {
@@ -160,9 +152,7 @@ namespace tud {
                             ++total;
                         }
 
-                        LOG("The number of unfit points for dof "
-                                << wrap.get_dof_idx() << " is " << unfit
-                                << "/" << total);
+                        LOG("The number of unfit points is " << unfit << "/" << total);
 
                         //Return the actual fitness value
                         return ((double) (total - unfit)) / ((double) total);

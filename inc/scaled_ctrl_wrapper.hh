@@ -38,6 +38,8 @@ namespace tud {
     namespace ctrl {
         namespace scots {
             namespace jni {
+                typedef pair<double, double> min_max_pair;
+                typedef vector<min_max_pair> min_max_cont;
 
                 /**
                  * This class represents a generic scaled CTRL wrapper.
@@ -54,7 +56,6 @@ namespace tud {
                  * pre-computed while scaling factors are computed and
                  * are stored explicitly.
                  */
-                template<bool IS_CACHING>
                 class scaled_ctrl_wrapper {
                 private:
                     //Stores the data source reference
@@ -63,58 +64,44 @@ namespace tud {
                     ctrl_wrapper & m_wrapper;
                     //Stores the state index
                     int m_state_idx;
-                    //Stores the array of inputs
-                    double * m_inputs;
-                    //Stores the computed scale
-                    double m_scale;
-                    //Stores the computed shift
-                    double m_shift;
+                    //Stores the computed scales per dof
+                    double * m_scale;
+                    //Stores the computed shifts per dof
+                    double * m_shift;
 
                     /**
                      * Evaluates the controller on all the points and computes
                      * its minimum and maximum values.
-                     * @param data_iter the data iterator
                      * @param wrap the controller wrapper
-                     * @param min_input the minimum value to compute
-                     * @param max_input the maximum value to compute
-                     * @return a new array of point value or NULL if the 
-                     * controller evaluation on some of the points was
-                     * infinite or nan.
+                     * @param min_max the minimum/maximum pair per dof container
                      */
-                    double * eval_and_min_max_values(
-                            sample_data_iter & data_iter, ctrl_wrapper & wrap,
-                            double &min_input, double &max_input) {
-                        //Allocate the inputs array and initialize the state index
-                        abs_type state_idx = 0;
-                        double * inputs = (IS_CACHING ? new double[data_iter.get_sample_size()] : NULL);
-
+                    void eval_and_min_max_values(
+                            ctrl_wrapper & wrap,
+                            min_max_cont & min_max_data) {
                         //Default initialization for the min and max values
-                        max_input = 0.0;
-                        min_input = DBL_MAX;
+                        min_max_data.resize(m_wrapper.get_is_dim(),{DBL_MAX, 0.0});
+
+                        //Instantiate the plain data iterator
+                        sample_data_iter data_iter(m_data);
 
                         //Iterate over the available states
                         const double * state = NULL;
+                        double input[m_wrapper.get_is_dim()];
                         while (data_iter.next_state(state)) {
                             //Compute the candidate's input for the state
-                            const double ctr_value = wrap.compute_input(state);
-                            //Check if the value is sensible
-                            //Store the value
-                            if (IS_CACHING) {
-                                inputs[state_idx] = ctr_value;
-                            }
+                            wrap.compute_input(state, input);
 
                             //Update the min/max values if the input is good
-                            if (!isnan(ctr_value) && !isinf(ctr_value)) {
-                                max_input = max(max_input, ctr_value);
-                                min_input = min(min_input, ctr_value);
+                            for (int idx = 0; idx < m_wrapper.get_is_dim(); ++idx) {
+                                min_max_data[idx].first =
+                                        min(min_max_data[idx].first, input[idx]);
+                                min_max_data[idx].second =
+                                        max(min_max_data[idx].second, input[idx]);
                             }
 
                             //Skip on the inputs
                             data_iter.skip_inputs_data();
-                            //Move to the next state index
-                            ++state_idx;
                         }
-                        return inputs;
                     }
 
                 public:
@@ -122,41 +109,40 @@ namespace tud {
                     /**
                      * The basic constructor
                      * @param data the data source object
-                     * @param wrapper the regular wrapper
-                     * @param scale the scaling factor
-                     * @param shift the shifting factor
+                     * @param wrap the regular wrapper
+                     * @param scale the scale array pointer, NOT NULL
+                     * @param shift the shift array pointer, NOT NULL
                      */
-                    scaled_ctrl_wrapper(const data_source & data, ctrl_wrapper & wrapper)
-                    : m_data(data), m_wrapper(wrapper), m_state_idx(0) {
-                        //Get the input dof index
-                        const int is_dof_idx = m_wrapper.get_dof_idx();
+                    scaled_ctrl_wrapper(const data_source & data,
+                            ctrl_wrapper & wrap,
+                            double * scale, double * shift)
+                    : m_data(data), m_wrapper(wrap), m_state_idx(0),
+                    m_scale(scale), m_shift(shift) {
+                        //Compute the inputs for the given individual and
+                        //the min/max values per input dimension thereof
+                        min_max_cont min_max;
+                        eval_and_min_max_values(m_wrapper, min_max);
 
-                        //Instantiate the plain data iterator
-                        sample_data_iter data_iter(m_data, is_dof_idx);
-                        
-                        //Compute the inputs for the given individual and the min/max values thereof
-                        double min_input, max_input;
-                        m_inputs = eval_and_min_max_values(
-                                data_iter, m_wrapper, min_input, max_input);
+                        //Compute the scale and shift factors per dimension
+                        for (int idx = 0; idx < wrap.get_is_dim(); ++idx) {
+                            //Get the controller's and individuals min/max for the dof
+                            const min_max_pair & orig_mm = m_data.m_min_max[idx];
+                            const min_max_pair & ind_mm = min_max[idx];
 
-                        //Get the original controller min/max values
-                        const pair<double, double> & min_max = m_data.m_min_max[is_dof_idx];
-                        //Compute the scaling factor
-                        const double orig_span = (min_max.second - min_max.first);
-                        const double func_span = (max_input - min_input);
+                            //Compute the scaling factor
+                            const double orig_span = (orig_mm.second - orig_mm.first);
+                            const double int_span = (ind_mm.second - ind_mm.first);
 
-                        //Set the scaling and shifting values                        
-                        m_scale = (func_span == 0.0) ? 1.0 : orig_span / func_span;
-                        m_shift = min_max.first - min_input * m_scale;
+                            //Set the scaling and shifting values
+                            m_scale[idx] = (int_span == 0.0) ? 1.0 : orig_span / int_span;
+                            m_shift[idx] = orig_mm.first - ind_mm.first * m_scale[idx];
+                        }
                     }
 
                     /**
                      * The basic destructor
                      */
                     virtual ~scaled_ctrl_wrapper() {
-                        if (IS_CACHING && m_inputs) {
-                            delete[] m_inputs;
-                        }
                     }
 
                     /**
@@ -165,30 +151,6 @@ namespace tud {
                      */
                     inline void reset() {
                         m_state_idx = 0;
-                    }
-
-                    /**
-                     * Allows to retrieve the computed scaling factor
-                     * @return  the computed scaling factor
-                     */
-                    inline double get_scale() const {
-                        return m_scale;
-                    }
-
-                    /**
-                     * Allows to retrieve the computed shifting factor
-                     * @return  the computed shifting factor
-                     */
-                    inline double get_shift() const {
-                        return m_shift;
-                    }
-
-                    /**
-                     * Allows to get the input dof index
-                     * @return the input dof index
-                     */
-                    inline const int & get_dof_idx() const {
-                        return m_wrapper.get_dof_idx();
                     }
 
                     /**
@@ -202,11 +164,13 @@ namespace tud {
                     /**
                      * Computes the input value for the given state
                      * @param state the state to call the method for
-                     * @return the computed input value for this state
+                     * @param input the input container to store the values into
                      */
-                    inline double compute_input(const double *state) {
-                        double ctrl_val = (IS_CACHING ? m_inputs[m_state_idx++] : m_wrapper.compute_input(state));
-                        return ctrl_val * m_scale + m_shift;
+                    inline void compute_input(const double *state, double *input) {
+                        m_wrapper.compute_input(state, input);
+                        for (int idx = 0; idx < m_wrapper.get_is_dim(); ++idx) {
+                            input[idx] = m_scale[idx] * input[idx] + m_shift[idx];
+                        }
                     }
                 };
             }

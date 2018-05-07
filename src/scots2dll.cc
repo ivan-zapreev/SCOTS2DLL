@@ -39,13 +39,14 @@
 #include "fitness_computer.hh"
 #include "unfit_exporter.hh"
 
-#define VOID void
-
 using namespace std;
 using namespace tud::ctrl::scots::jni;
 
-//Stores the fitness class name
-static const char * const FITNESS_CLASS_NAME = "nl/tudelft/dcsc/scots2sr/sr/ScaledFitness";
+//Stores the extended fitness class name
+static const char * const EXT_FITNESS_CLASS_NAME = "nl/tudelft/dcsc/scots2sr/sr/ExtendedFitness";
+
+//Stores the scaled fitness class name
+static const char * const SC_FITNESS_CLASS_NAME = "nl/tudelft/dcsc/scots2sr/sr/ScaledFitness";
 
 //Stores the fitness computer
 static fitness_computer * m_p_ftn_comp = NULL;
@@ -110,7 +111,7 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_get_1state_1spac
     return result;
 }
 
-JNIEXPORT VOID JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
+JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
 (JNIEnv * env, jclass, jobject cfg) {
     LOG("Start configuring the object");
 
@@ -128,39 +129,98 @@ JNIEXPORT VOID JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_configure
     LOG("The object configuration is finished");
 }
 
-static jobject compute_fitness(JNIEnv * env, jstring pclass_name, jint ipt_dof_idx) {
-    jobject result;
-    if (m_p_data != NULL) {
-        double exact_ftn = 0.0, req_ftn = 0.0, scale = 1.0, shift = 0.0;
-        const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
-        string pn_local(pname_c);
-        jclass ind_class = env->FindClass(pname_c);
-        env->ReleaseStringUTFChars(pclass_name, pname_c);
-        if (ind_class != NULL) {
-            ctrl_wrapper wrapper(env, ind_class, pn_local,
-                    ipt_dof_idx, m_p_data->get_config().m_num_ss_dim);
-            m_p_ftn_comp->compute(env, wrapper, exact_ftn, req_ftn, scale, shift);
-        } else {
-            (void) throwException(env, ClassNotFoundException,
-                    "The requested individual is not found!");
-        }
+static string get_pclass_by_name(JNIEnv * env, jstring pclass_name, jclass & ind_class) {
+    const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
+    string pn_local(pname_c);
+    ind_class = env->FindClass(pname_c);
+    env->ReleaseStringUTFChars(pclass_name, pname_c);
+    if (ind_class == NULL) {
+        (void) throwException(env, ClassNotFoundException,
+                "The requested individual is not found!");
+    }
+    return pn_local;
+}
 
-        //Find the fitness container class
-        jclass m_ftn_cls = env->FindClass(FITNESS_CLASS_NAME);
-        //Find the fitness container class constructor
-        jmethodID m_ftn_con_id = env->GetMethodID(m_ftn_cls, "<init>", "(DDDD)V");
-        //Return the fitness object
-        result = env->NewObject(m_ftn_cls, m_ftn_con_id, exact_ftn, req_ftn, scale, shift);
+/**
+ * Allows to compute plain fitness with scaling
+ * @param env the JNI environment
+ * @param wrap the individual clas wrapper
+ * @return the fitness object
+ */
+static jobject compute_fitness_sc(
+        JNIEnv * env, ctrl_wrapper & wrap) {
+    //Create java arrays for storing scales and shifts
+    const int is_dim = wrap.get_is_dim();
+    jdoubleArray jscale = env->NewDoubleArray(is_dim);
+    jdoubleArray jshift = env->NewDoubleArray(is_dim);
+
+    //Access the actual array elements to fill in
+    double * scale = env->GetDoubleArrayElements(jscale, 0);
+    double * shift = env->GetDoubleArrayElements(jshift, 0);
+
+    //Compute the scaled fitness, with the scales and shifts
+    double ex_ftn = 0.0, req_ftn = 0.0;
+    m_p_ftn_comp->compute(env, wrap, ex_ftn, req_ftn, scale, shift);
+
+    //Release the elements to be copied to java
+    env->ReleaseDoubleArrayElements(jscale, scale, 0);
+    env->ReleaseDoubleArrayElements(jshift, shift, 0);
+
+    //Find the scaled fitness container class
+    jclass scf_cls = env->FindClass(SC_FITNESS_CLASS_NAME);
+    //Find the scaled fitness container class constructor
+    jmethodID scf_con = env->GetMethodID(scf_cls, "<init>", "(DD[D[D)V");
+    //Instantiate the result
+    return env->NewObject(scf_cls, scf_con, ex_ftn, req_ftn, jscale, jshift);
+}
+
+/**
+ * Allows to compute plain fitness without scaling
+ * @param env the JNI environment
+ * @param wrap the individual clas wrapper
+ * @return the fitness object
+ */
+static jobject compute_fitness_pl(
+        JNIEnv * env, ctrl_wrapper & wrap) {
+    //Compute the scaled fitness
+    double ex_ftn = 0.0, req_ftn = 0.0;
+    m_p_ftn_comp->compute(env, wrap, ex_ftn, req_ftn);
+
+    //Find the extended fitness container class
+    jclass exf_cls = env->FindClass(EXT_FITNESS_CLASS_NAME);
+    //Find the extended fitness container class constructor
+    jmethodID exf_con = env->GetMethodID(exf_cls, "<init>", "(DD)V");
+    //Instantiate the result
+    return env->NewObject(exf_cls, exf_con, ex_ftn, req_ftn);
+}
+
+JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitness
+(JNIEnv * env, jclass, jstring pclass_name) {
+    jobject result = NULL;
+    if (m_p_data != NULL) {
+
+        //Obtain the individual's class and name
+        jclass ind_class = NULL;
+        string pn_local = get_pclass_by_name(env, pclass_name, ind_class);
+        const int ss_dim = m_p_data->get_config().m_num_ss_dim;
+        const int is_dim = m_p_data->get_config().m_num_is_dim;
+
+        //Instantiate the controller's wrapper
+        ctrl_wrapper wrap(env, ind_class, pn_local, ss_dim, is_dim);
+
+        //Compute fitness and the resulting object
+        double ex_ftn = 0.0, req_ftn = 0.0;
+        if (m_p_data->get_config().m_is_scale) {
+            result = compute_fitness_sc(env, wrap);
+        } else {
+            result = compute_fitness_pl(env, wrap);
+        }
     } else {
         (void) throwException(env, IllegalStateException,
                 "The controller is not loaded!");
     }
-    return result;
-}
 
-JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitness
-(JNIEnv * env, jclass, jstring person_name, jint ipt_dof_idx) {
-    return compute_fitness(env, person_name, ipt_dof_idx);
+    return result;
 }
 
 JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_start_1unfit_1export
@@ -170,22 +230,21 @@ JNIEXPORT void JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_start_1unfit_1ex
 }
 
 JNIEXPORT jdouble JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_export_1unfit_1points
-(JNIEnv * env, jclass, jstring pclass_name, jint ipt_dof_idx) {
+(JNIEnv * env, jclass, jstring pclass_name) {
     double result = 0.0;
 
     if (m_p_data != NULL) {
-        const char *pname_c = env->GetStringUTFChars(pclass_name, 0);
-        string pn_local(pname_c);
-        jclass ind_class = env->FindClass(pname_c);
-        env->ReleaseStringUTFChars(pclass_name, pname_c);
-        if (ind_class != NULL) {
-            ctrl_wrapper wrapper(env, ind_class, pn_local,
-                    ipt_dof_idx, m_p_data->get_config().m_num_ss_dim);
-            result = m_p_unf_exp->compute_unfit_points(env, wrapper);
-        } else {
-            (void) throwException(env, ClassNotFoundException,
-                    "The requested individual is not found!");
-        }
+        //Obtain the individual's class and name
+        jclass ind_class = NULL;
+        string pn_local = get_pclass_by_name(env, pclass_name, ind_class);
+
+        //Create wrapper class
+        ctrl_wrapper wrapper(env, ind_class, pn_local,
+                m_p_data->get_config().m_num_ss_dim,
+                m_p_data->get_config().m_num_is_dim);
+
+        //Export unfit points
+        result = m_p_unf_exp->compute_unfit_points(env, wrapper);
     } else {
         (void) throwException(env, IllegalStateException,
                 "The controller is not loaded!");
