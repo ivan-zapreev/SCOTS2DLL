@@ -75,6 +75,8 @@ namespace tud {
                     const bool m_is_rss;
                     //Stores the initial sample size for the Monte Carlo sampling
                     const int64_t m_sample_size;
+                    //Stores the number of re-sampling attempts for when we get a duplicate or non-domain sample state
+                    const int m_re_sample_attempts;
                     //Stores the minimum sample size the RSS is applied to
                     const int64_t m_bisect_size;
                     //Stores the fraction of sample to be used for bisection
@@ -87,8 +89,8 @@ namespace tud {
                     : m_num_ss_dim(0), m_num_is_dim(0), m_attr_size(0.0),
                     m_is_scale(false), m_ftn_type(fitness_type::EXACT_FITNESS),
                     m_is_complex(false), m_ftn_scale(1.0), m_is_mc(false),
-                    m_is_rss(false), m_sample_size(0), m_bisect_size(0),
-                    m_bisect_ratio(0.0) {
+                    m_is_rss(false), m_sample_size(0), m_re_sample_attempts(0),
+                    m_bisect_size(0), m_bisect_ratio(0.0) {
                     }
 
                     /**
@@ -101,6 +103,7 @@ namespace tud {
                     m_ftn_type(other.m_ftn_type), m_is_complex(other.m_is_complex),
                     m_ftn_scale(other.m_ftn_scale), m_is_mc(other.m_is_mc),
                     m_is_rss(other.m_is_rss), m_sample_size(other.m_sample_size),
+                    m_re_sample_attempts(other.m_re_sample_attempts),
                     m_bisect_size(other.m_bisect_size),
                     m_bisect_ratio(other.m_bisect_ratio) {
                     }
@@ -121,6 +124,7 @@ namespace tud {
                         const_cast<bool&> (m_is_mc) = other.m_is_mc;
                         const_cast<bool&> (m_is_rss) = other.m_is_rss;
                         const_cast<int64_t&> (m_sample_size) = other.m_sample_size;
+                        const_cast<int&> (m_re_sample_attempts) = other.m_re_sample_attempts;
                         const_cast<int64_t&> (m_bisect_size) = other.m_bisect_size;
                         const_cast<double&> (m_bisect_ratio) = other.m_bisect_ratio;
 
@@ -144,6 +148,7 @@ namespace tud {
                     m_is_mc(get_bool_field(env, obj, "m_is_mc")),
                     m_is_rss(get_bool_field(env, obj, "m_is_rss")),
                     m_sample_size(get_long_field(env, obj, "m_sample_size")),
+                    m_re_sample_attempts(get_int_field(env, obj, "m_re_sample_attempts")),
                     m_bisect_size(get_long_field(env, obj, "m_bisect_size")),
                     m_bisect_ratio(get_double_field(env, obj, "m_bisect_ratio")) {
                     }

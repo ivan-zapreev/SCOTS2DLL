@@ -462,7 +462,7 @@ namespace tud {
 
                         //Prepare samples
                         size_t ext_smp_cnt = 0;
-                        size_t attempts = 0, max_attempts = 3;
+                        size_t attempts = 0;
                         while (ext_smp_cnt < sample_size) {
                             //Generate a random abstract state
                             cube.get_random(state_abs, state_dbl);
@@ -470,7 +470,7 @@ namespace tud {
                             //Cache the domain state with its inputs
                             if (cache_sample_element<IS_SCALE_FIT, IS_BISECTOR>(
                                     state_abs, state_dbl, samples, state,
-                                    inputs, p_bisect) || (attempts >= max_attempts)) {
+                                    inputs, p_bisect) || (attempts >= m_config.m_re_sample_attempts)) {
                                 //Increment the sample count
                                 ++ext_smp_cnt;
                                 //Re-set the attempts
