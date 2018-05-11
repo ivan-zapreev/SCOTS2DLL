@@ -231,23 +231,6 @@ namespace tud {
                     }
 
                     /**
-                     * Allows to ensure that the data points are loaded
-                     */
-                    void ensure_data_points() {
-                        //If we did the Monte-Carlo simulations then the
-                        //plain data is not complete clear it and re-fill
-                        //For numeric computations the plain data must
-                        //have been fully loaded.
-                        if (m_config.m_is_mc) {
-                            //Clear the sample data
-                            clear_sample_data();
-                            //Re-fill the sample with complete data,
-                            //no min/max computations are needed
-                            prepare_num_data<false>();
-                        }
-                    }
-
-                    /**
                      * Allows to compute the restriction of the state in a thread-safe way.
                      * @param state the state to restrict to
                      * @return the vector of resulting inputs

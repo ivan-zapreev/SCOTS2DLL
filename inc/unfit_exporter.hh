@@ -71,9 +71,6 @@ namespace tud {
                         LOG("Starting unfit points export");
                         //Re-initialize the unfit points BDD
                         m_unfit_bdd = m_data.m_p_cudd->bddZero();
-                        //Make sure all the data points are pre-loaded,
-                        //this is needed to speed up computations
-                        m_data.ensure_data_points();
                     }
 
                     /**
@@ -119,47 +116,79 @@ namespace tud {
                      * @param wrap the controller's wrapper
                      */
                     double add_unfit_points_to_bdd(JNIEnv * env, ctrl_wrapper & wrap) {
-                        //The variables to store the number of fit and unfit points
-                        long total = 0.0, unfit = 0.0;
+                        //Get controller's states
+                        raw_data states;
+                        const abs_type dom_size = m_data.m_p_ss_mgr->get_size();
+                        LOG("Start getting " << dom_size << " domain states");
+                        m_data.m_p_ss_mgr->get_points(states);
 
-                        //Instantiate the plain data iterator
-                        sample_data_iter data_iter(m_data);
+                        //Convert the current individual into a BDD I
+                        LOG("Start converting the symbolic controller into BDD");
 
-                        //Iterate over states and filter out the bad ones
-                        const double * state = NULL;
-                        double ind_input[m_data.get_config().m_num_is_dim];
-                        double delta_err = DBL_MAX;
-                        abs_type state_abs[m_config.m_num_ss_dim];
-                        while (data_iter.next_state(state)) {
-                            //Compute the state input
-                            wrap.compute_input(state, ind_input);
-                            //If there are nun of inf values or the error delta is
-                            //larger than the maximum then this point is not fit.
-                            if (!min_state_error(ind_input, data_iter, delta_err)
-                                    || (delta_err >= MAX_ATTRACTOR_SIZE)) {
-                                //Copy the values into the state array
-                                for (int idx = 0; idx < m_config.m_num_ss_dim; ++idx) {
-                                    state_abs[idx] = state[idx];
-                                }
+                        auto state_begin = states.begin();
+                        BDD ctrl_bdd = m_data.m_p_cudd->bddZero();
 
-                                //Convert the abstract state to BDD and add to the total
-                                m_unfit_bdd = m_unfit_bdd | m_data.m_p_ss_mgr->x_to_bdd(state_abs);
+                        raw_data state(m_config.m_num_ss_dim);
+                        raw_data astate(m_config.m_num_ss_dim);
+                        raw_data ainput(m_config.m_num_is_dim);
 
-                                //Increment the number of unfit points
-                                ++unfit;
+                        int64_t new_cnt = 0, old_cnt = 0, state_cnt = 0;
+
+                        //Iterate over the states, get the corresponding
+                        while (state_begin != states.end()) {
+                            //Get a new state vector
+                            state.assign(state_begin, state_begin + m_config.m_num_ss_dim);
+
+                            //Convert state to an abstract one
+                            m_data.m_p_ss_mgr->xtois(state, astate);
+
+                            //Compute the state input on the abstract state
+                            wrap.compute_input(astate.data(), ainput.data());
+
+                            //Add the state/input pair to the controller BDD
+                            ctrl_bdd |=
+                                    (m_data.m_p_ss_mgr->i_to_bdd(astate)
+                                    & m_data.m_p_is_mgr->i_to_bdd(ainput));
+
+                            //Move forward in the list of states
+                            state_begin += m_config.m_num_ss_dim;
+
+                            //De the logging for convenience
+                            new_cnt = state_cnt * 1000 / dom_size;
+                            if (new_cnt != old_cnt) {
+                                LOG("Converted " << ((double) new_cnt) / 10.0
+                                        << "% of the symbolic controller");
+                                old_cnt = new_cnt;
                             }
-                            //Increment the number of fit points
-                            ++total;
+                            ++state_cnt;
                         }
 
-                        LOG("The number of unfit points is " << unfit << "/" << total);
+                        LOG("Start computing the good part of the symbolic controller");
+                        //Get the controller BDD and intersect it with the original
+                        BDD good_ctrl_bdd = ctrl_bdd & *m_data.m_p_ctrl_bdd;
+
+                        //Get the domains of both the original and the 
+                        //good part of the generated controller
+                        BDD U = m_data.m_p_is_mgr->get_inputs_set().get_cube(*m_data.m_p_cudd);
+                        LOG("Start computing the original domain");
+                        BDD dom_orig = m_data.m_p_ctrl_bdd->ExistAbstract(U);
+                        LOG("Start computing the good part domain");
+                        BDD dom_good = good_ctrl_bdd.ExistAbstract(U);
+
+                        //The unfit states are those which are not in the good part
+                        LOG("Start computing the unfit domain part");
+                        m_unfit_bdd = dom_orig & !dom_good;
+
+                        LOG("Start computing the number of unfit points in BDD");
+                        const abs_type unfit_size
+                                = m_data.m_p_ss_mgr->get_states_set().get_size(
+                                *m_data.m_p_cudd, m_unfit_bdd);
 
                         //Return the actual fitness value
-                        return ((double) (total - unfit)) / ((double) total);
+                        LOG("The number of unfit points is " << unfit_size << "/" << dom_size);
+                        return ((double) (dom_size - unfit_size)) / ((double) dom_size);
                     }
-
                 };
-
             }
         }
     }
