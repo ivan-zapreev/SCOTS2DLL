@@ -159,8 +159,8 @@ static jobject compute_fitness_sc(
     double * shift = env->GetDoubleArrayElements(jshift, 0);
 
     //Compute the scaled fitness, with the scales and shifts
-    double ex_ftn = 0.0, req_ftn = 0.0;
-    m_p_ftn_comp->compute(env, wrap, ex_ftn, req_ftn, scale, shift);
+    double act_ftn = 0.0, ext_ftn = 0.0;
+    m_p_ftn_comp->compute(env, wrap, act_ftn, ext_ftn, scale, shift);
 
     //Release the elements to be copied to java
     env->ReleaseDoubleArrayElements(jscale, scale, 0);
@@ -171,7 +171,7 @@ static jobject compute_fitness_sc(
     //Find the scaled fitness container class constructor
     jmethodID scf_con = env->GetMethodID(scf_cls, "<init>", "(DD[D[D)V");
     //Instantiate the result
-    return env->NewObject(scf_cls, scf_con, ex_ftn, req_ftn, jscale, jshift);
+    return env->NewObject(scf_cls, scf_con, act_ftn, ext_ftn, jscale, jshift);
 }
 
 /**
@@ -183,15 +183,15 @@ static jobject compute_fitness_sc(
 static jobject compute_fitness_pl(
         JNIEnv * env, ctrl_wrapper & wrap) {
     //Compute the scaled fitness
-    double ex_ftn = 0.0, req_ftn = 0.0;
-    m_p_ftn_comp->compute(env, wrap, ex_ftn, req_ftn);
+    double act_ftn = 0.0, ext_ftn = 0.0;
+    m_p_ftn_comp->compute(env, wrap, act_ftn, ext_ftn);
 
     //Find the extended fitness container class
     jclass exf_cls = env->FindClass(EXT_FITNESS_CLASS_NAME);
     //Find the extended fitness container class constructor
     jmethodID exf_con = env->GetMethodID(exf_cls, "<init>", "(DD)V");
     //Instantiate the result
-    return env->NewObject(exf_cls, exf_con, ex_ftn, req_ftn);
+    return env->NewObject(exf_cls, exf_con, act_ftn, ext_ftn);
 }
 
 JNIEXPORT jobject JNICALL Java_nl_tudelft_dcsc_scots2jni_Scots2JNI_compute_1fitness
