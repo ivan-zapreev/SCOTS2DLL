@@ -65,6 +65,8 @@ namespace tud {
                     const bool m_is_scale;
                     //Stores the fitness type
                     const fitness_type m_ftn_type;
+                    //Stores the fral for extended fitness
+                    const bool m_is_extended;
                     //Stores the flag for complex fitness
                     const bool m_is_complex;
                     //Stores the fitness function scaling factor for the complex fitness types INVERSE and ATANGENT
@@ -88,9 +90,9 @@ namespace tud {
                     config_wrapper()
                     : m_num_ss_dim(0), m_num_is_dim(0), m_attr_size(0.0),
                     m_is_scale(false), m_ftn_type(fitness_type::EXACT_FITNESS),
-                    m_is_complex(false), m_ftn_scale(1.0), m_is_mc(false),
-                    m_is_rss(false), m_sample_size(0), m_re_sample_attempts(0),
-                    m_bisect_size(0), m_bisect_ratio(0.0) {
+                    m_is_extended(false), m_is_complex(false), m_ftn_scale(1.0),
+                    m_is_mc(false), m_is_rss(false), m_sample_size(0),
+                    m_re_sample_attempts(0), m_bisect_size(0), m_bisect_ratio(0.0) {
                     }
 
                     /**
@@ -100,9 +102,10 @@ namespace tud {
                     config_wrapper(const config_wrapper & other)
                     : m_num_ss_dim(other.m_num_ss_dim), m_num_is_dim(other.m_num_is_dim),
                     m_attr_size(other.m_attr_size), m_is_scale(other.m_is_scale),
-                    m_ftn_type(other.m_ftn_type), m_is_complex(other.m_is_complex),
-                    m_ftn_scale(other.m_ftn_scale), m_is_mc(other.m_is_mc),
-                    m_is_rss(other.m_is_rss), m_sample_size(other.m_sample_size),
+                    m_ftn_type(other.m_ftn_type), m_is_extended(other.m_is_extended),
+                    m_is_complex(other.m_is_complex), m_ftn_scale(other.m_ftn_scale),
+                    m_is_mc(other.m_is_mc), m_is_rss(other.m_is_rss),
+                    m_sample_size(other.m_sample_size),
                     m_re_sample_attempts(other.m_re_sample_attempts),
                     m_bisect_size(other.m_bisect_size),
                     m_bisect_ratio(other.m_bisect_ratio) {
@@ -119,6 +122,7 @@ namespace tud {
                         const_cast<double&> (m_attr_size) = other.m_attr_size;
                         const_cast<bool&> (m_is_scale) = other.m_is_scale;
                         const_cast<fitness_type&> (m_ftn_type) = other.m_ftn_type;
+                        const_cast<bool&> (m_is_extended) = other.m_is_extended;
                         const_cast<bool&> (m_is_complex) = other.m_is_complex;
                         const_cast<double&> (m_ftn_scale) = other.m_ftn_scale;
                         const_cast<bool&> (m_is_mc) = other.m_is_mc;
@@ -143,6 +147,7 @@ namespace tud {
                     m_ftn_type((fitness_type) get_int_field(env, obj, "m_ftn_type")),
                     m_attr_size(get_double_field(env, obj, "m_attr_size")),
                     m_is_scale(get_bool_field(env, obj, "m_is_scale")),
+                    m_is_extended(get_bool_field(env, obj, "m_is_extended")),
                     m_is_complex(get_bool_field(env, obj, "m_is_complex")),
                     m_ftn_scale(get_ftn_scale(env, obj)),
                     m_is_mc(get_bool_field(env, obj, "m_is_mc")),
@@ -166,7 +171,7 @@ namespace tud {
                         }
 
                         //Check the attractor value
-                        if (m_is_complex) {
+                        if (m_is_extended) {
                             if (m_attr_size < 0 || m_attr_size >= MAX_ATTRACTOR_SIZE) {
                                 (void) throwException(env, IllegalArgumentException,
                                         "Improper attractor value, must be within [0, 0.5)!");

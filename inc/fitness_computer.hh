@@ -106,29 +106,30 @@ namespace tud {
                      * @param part_score the partial score value
                      * @param part_scores the partial scores
                      * @param num_points the number of points
-                     * @param ex_ftn the exact fitness
-                     * @param req_ftn the requested fitness
+                     * @param act_ftn the actual fitness
+                     * @param ext_ftn the extended fitness
                      */
-                    template<bool IS_COMPLEX>
+                    template<bool IS_EXTENDED, bool IS_COMPLEX>
                     void finalize_fitness_computations(
                             const double & exact_score, const double & part_score,
                             scores_queue & part_scores, const abs_type num_points,
-                            double & ex_ftn, double & req_ftn) {
+                            double & act_ftn, double & ext_ftn) {
                         //Check if the number of points is not zero
                         if (num_points > 0) {
                             //Compute the resulting fitness values
-                            double part_score_sum = 0.0;
-                            while (!part_scores.empty()) {
-                                part_score_sum += part_scores.top();
-                                part_scores.pop();
-                            }
-
-                            ex_ftn = exact_score / num_points;
-                            if (IS_COMPLEX) {
-                                const double ext_ftn = (part_score + part_score_sum) / num_points;
-                                req_ftn = sqrt(ex_ftn * ex_ftn + ext_ftn * ext_ftn);
+                            act_ftn = exact_score / num_points;
+                            if (IS_EXTENDED) {
+                                double part_score_sum = 0.0;
+                                while (!part_scores.empty()) {
+                                    part_score_sum += part_scores.top();
+                                    part_scores.pop();
+                                }
+                                ext_ftn = (part_score + part_score_sum) / num_points;
+                                if (IS_COMPLEX) {
+                                    ext_ftn = sqrt(act_ftn * act_ftn + ext_ftn * ext_ftn) / sqrt(2.0);
+                                }
                             } else {
-                                req_ftn = ex_ftn;
+                                ext_ftn = act_ftn;
                             }
                         } else {
                             LOG("WARNING: The number of computed fitness points is 0!");
@@ -140,12 +141,12 @@ namespace tud {
                      * using numerical methods and without scaling.
                      * @param env the JNI environment
                      * @param wrap the controller's wrapper
-                     * @param ex_ftn the exact fitness
-                     * @param req_ftn the requested fitness
+                     * @param act_ftn the actual fitness
+                     * @param ext_ftn the extended fitness
                      */
-                    template<bool IS_COMPLEX, fitness_type FTN_TYPE, typename WRAP_TYPE>
+                    template<bool IS_EXTENDED, bool IS_COMPLEX, fitness_type FTN_TYPE, typename WRAP_TYPE>
                     void compute_fitness_pl(JNIEnv * env, WRAP_TYPE & wrap,
-                            double & ex_ftn, double & req_ftn) {
+                            double & act_ftn, double & ext_ftn) {
                         //Re-set the values to zero first
                         double exact_score = 0.0;
                         double part_score = 0.0;
@@ -166,32 +167,31 @@ namespace tud {
                             //Check if the minimum state error can be computed
                             if (min_state_error(ind_input, data_iter, delta_err)) {
                                 //If it can then compute the scores
-                                update_scores<IS_COMPLEX, FTN_TYPE>(env, delta_err,
+                                update_scores<IS_EXTENDED, FTN_TYPE>(env, delta_err,
                                         exact_score, part_score, part_scores);
                             }
                         }
 
                         //Finalize the fitness computations
-                        finalize_fitness_computations<IS_COMPLEX>(
+                        finalize_fitness_computations<IS_EXTENDED, IS_COMPLEX>(
                                 exact_score, part_score, part_scores,
-                                m_data.get_sample_size(),
-                                ex_ftn, req_ftn);
+                                m_data.get_sample_size(), act_ftn, ext_ftn);
                     }
 
                     /**
                      * Allows to compute the error of the given controller.
                      * @param env the JNI environment
                      * @param wrap the controller's wrapper
-                     * @param ex_ftn the exact fitness
-                     * @param req_ftn the requested fitness
+                     * @param act_ftn the actual fitness
+                     * @param ext_ftn the extended fitness
                      * @param scale the scale array pointer for when scaling is
                      *              requested, otherwise NULL
                      * @param shift the shift array pointer for when  scaling is
                      *              requested, otherwise NULL
                      */
-                    template<bool IS_COMPLEX, bool IS_SCALE, fitness_type FTN_TYPE>
+                    template<bool IS_EXTENDED, bool IS_COMPLEX, bool IS_SCALE, fitness_type FTN_TYPE>
                     void compute_cmpl_sc_ft(JNIEnv * env, ctrl_wrapper & wrap,
-                            double & ex_ftn, double & req_ftn,
+                            double & act_ftn, double & ext_ftn,
                             double * scale, double * shift) {
                         if (IS_SCALE) {
                             //Initialize the scaled wrapper
@@ -199,11 +199,11 @@ namespace tud {
                                     m_data, wrap, scale, shift);
 
                             //Compute the fitness
-                            compute_fitness_pl<IS_COMPLEX, FTN_TYPE>(
-                                    env, sc_wrap, ex_ftn, req_ftn);
+                            compute_fitness_pl<IS_EXTENDED, IS_COMPLEX, FTN_TYPE>(
+                                    env, sc_wrap, act_ftn, ext_ftn);
                         } else {
-                            compute_fitness_pl<IS_COMPLEX, FTN_TYPE>(
-                                    env, wrap, ex_ftn, req_ftn);
+                            compute_fitness_pl<IS_EXTENDED, IS_COMPLEX, FTN_TYPE>(
+                                    env, wrap, act_ftn, ext_ftn);
                         }
                     }
 
@@ -211,29 +211,29 @@ namespace tud {
                      * Allows to compute the error of the given controller.
                      * @param env the JNI environment
                      * @param wrap the controller's wrapper
-                     * @param ex_ftn the exact fitness
-                     * @param req_ftn the requested fitness
+                     * @param act_ftn the actual fitness
+                     * @param ext_ftn the extended fitness
                      * @param scale the scale array pointer for when scaling is
                      *              requested, otherwise NULL
                      * @param shift the shift array pointer for when  scaling is
                      *              requested, otherwise NULL
                      */
-                    template<bool IS_COMPLEX, bool IS_SCALE>
-                    void compute_cmpl_sc(JNIEnv * env, ctrl_wrapper & wrap,
-                            double & ex_ftn, double & req_ftn,
+                    template<bool IS_EXTENDED, bool IS_COMPLEX, bool IS_SCALE>
+                    void compute_ext_cmpl_sc(JNIEnv * env, ctrl_wrapper & wrap,
+                            double & act_ftn, double & ext_ftn,
                             double * scale, double * shift) {
                         switch (m_config.m_ftn_type) {
                             case EXACT_FITNESS:
-                                compute_cmpl_sc_ft< IS_COMPLEX, IS_SCALE, EXACT_FITNESS >
-                                        (env, wrap, ex_ftn, req_ftn, scale, shift);
+                                compute_cmpl_sc_ft< IS_EXTENDED, IS_COMPLEX, IS_SCALE, EXACT_FITNESS >
+                                        (env, wrap, act_ftn, ext_ftn, scale, shift);
                                 break;
                             case ATANG_FITNESS:
-                                compute_cmpl_sc_ft< IS_COMPLEX, IS_SCALE, ATANG_FITNESS >
-                                        (env, wrap, ex_ftn, req_ftn, scale, shift);
+                                compute_cmpl_sc_ft< IS_EXTENDED, IS_COMPLEX, IS_SCALE, ATANG_FITNESS >
+                                        (env, wrap, act_ftn, ext_ftn, scale, shift);
                                 break;
                             case INVER_FITNESS:
-                                compute_cmpl_sc_ft< IS_COMPLEX, IS_SCALE, INVER_FITNESS >
-                                        (env, wrap, ex_ftn, req_ftn, scale, shift);
+                                compute_cmpl_sc_ft< IS_EXTENDED, IS_COMPLEX, IS_SCALE, INVER_FITNESS >
+                                        (env, wrap, act_ftn, ext_ftn, scale, shift);
                                 break;
                             default:
                                 (void) throwException(env,
@@ -246,23 +246,47 @@ namespace tud {
                      * Allows to compute the error of the given controller.
                      * @param env the JNI environment
                      * @param wrap the controller's wrapper
-                     * @param ex_ftn the exact fitness
-                     * @param req_ftn the requested fitness
+                     * @param act_ftn the actual fitness
+                     * @param ext_ftn the extended fitness
                      * @param scale the scale array pointer for when scaling is
                      *              requested, otherwise NULL
                      * @param shift the shift array pointer for when  scaling is
                      *              requested, otherwise NULL
                      */
-                    template<bool IS_COMPLEX>
-                    void compute_cmpl(JNIEnv * env, ctrl_wrapper & wrap,
-                            double & ex_ftn, double & req_ftn,
+                    template<bool IS_EXTENDED, bool IS_COMPLEX>
+                    void compute_ext_cmpl(JNIEnv * env, ctrl_wrapper & wrap,
+                            double & act_ftn, double & ext_ftn,
                             double * scale, double * shift) {
                         if (m_config.m_is_scale) {
-                            compute_cmpl_sc< IS_COMPLEX, true >
-                                    (env, wrap, ex_ftn, req_ftn, scale, shift);
+                            compute_ext_cmpl_sc< IS_EXTENDED, IS_COMPLEX, true >
+                                    (env, wrap, act_ftn, ext_ftn, scale, shift);
                         } else {
-                            compute_cmpl_sc< IS_COMPLEX, false >
-                                    (env, wrap, ex_ftn, req_ftn, scale, shift);
+                            compute_ext_cmpl_sc< IS_EXTENDED, IS_COMPLEX, false >
+                                    (env, wrap, act_ftn, ext_ftn, scale, shift);
+                        }
+                    }
+
+                    /**
+                     * Allows to compute the error of the given controller.
+                     * @param env the JNI environment
+                     * @param wrap the controller's wrapper
+                     * @param act_ftn the actual fitness
+                     * @param ext_ftn the extended fitness
+                     * @param scale the scale array pointer for when scaling is
+                     *              requested, otherwise NULL
+                     * @param shift the shift array pointer for when  scaling is
+                     *              requested, otherwise NULL
+                     */
+                    template<bool IS_EXTENDED>
+                    void compute_ext(JNIEnv * env, ctrl_wrapper & wrap,
+                            double & act_ftn, double & ext_ftn,
+                            double * scale, double * shift) {
+                        if (m_config.m_is_complex) {
+                            compute_ext_cmpl< IS_EXTENDED, true >
+                                    (env, wrap, act_ftn, ext_ftn, scale, shift);
+                        } else {
+                            compute_ext_cmpl< IS_EXTENDED, false >
+                                    (env, wrap, act_ftn, ext_ftn, scale, shift);
                         }
                     }
 
@@ -295,13 +319,13 @@ namespace tud {
                      *              requested, otherwise NULL, default is NULL
                      */
                     void compute(JNIEnv * env, ctrl_wrapper & wrap,
-                            double & ex_ftn, double & req_ftn,
+                            double & act_ftn, double & ext_ftn,
                             double * scale = NULL, double * shift = NULL) {
                         if (m_config.m_num_ss_dim > 0) {
-                            if (m_config.m_is_complex) {
-                                compute_cmpl<true>(env, wrap, ex_ftn, req_ftn, scale, shift);
+                            if (m_config.m_is_extended) {
+                                compute_ext<true>(env, wrap, act_ftn, ext_ftn, scale, shift);
                             } else {
-                                compute_cmpl<false>(env, wrap, ex_ftn, req_ftn, scale, shift);
+                                compute_ext<false>(env, wrap, act_ftn, ext_ftn, scale, shift);
                             }
                         } else {
                             (void) throwException(env, IllegalStateException,
