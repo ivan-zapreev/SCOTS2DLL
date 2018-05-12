@@ -146,9 +146,10 @@ namespace tud {
                             wrap.compute_input(astate.data(), ainput.data());
 
                             //Add the state/input pair to the controller BDD
-                            ctrl_bdd |=
-                                    (m_data.m_p_ss_mgr->i_to_bdd(astate)
-                                    & m_data.m_p_is_mgr->i_to_bdd(ainput));
+                            BDD input_bdd = m_data.m_p_cudd->bddOne();
+                            if (m_data.m_p_is_mgr->i_to_bdd(ainput, input_bdd)) {
+                                ctrl_bdd |= m_data.m_p_ss_mgr->i_to_bdd(astate) & input_bdd;
+                            }
 
                             //Move forward in the list of states
                             state_begin += m_config.m_num_ss_dim;
