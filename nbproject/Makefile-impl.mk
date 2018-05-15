@@ -27,11 +27,11 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 PROJECTNAME=SCOTS2DLL
 
 # Active Configuration
-DEFAULTCONF=Debug
+DEFAULTCONF=Release_Linux
 CONF=${DEFAULTCONF}
 
 # All Configurations
-ALLCONFS=Debug Release 
+ALLCONFS=Release_Linux Debug_Linux Release_Mac Debug_Mac 
 
 
 # build

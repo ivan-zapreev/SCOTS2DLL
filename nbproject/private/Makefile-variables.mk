@@ -3,5 +3,7 @@
 #
 # NOCDDL
 #
-# Debug configuration
-# Release configuration
+# Release_Linux configuration
+# Debug_Linux configuration
+# Release_Mac configuration
+# Debug_Mac configuration

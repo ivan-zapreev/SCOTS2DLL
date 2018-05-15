@@ -15,11 +15,19 @@
             </sourceRootList>
             <confList>
                 <confElem>
-                    <name>Debug</name>
+                    <name>Release_Linux</name>
                     <type>2</type>
                 </confElem>
                 <confElem>
-                    <name>Release</name>
+                    <name>Debug_Linux</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>Release_Mac</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>Debug_Mac</name>
                     <type>2</type>
                 </confElem>
             </confList>

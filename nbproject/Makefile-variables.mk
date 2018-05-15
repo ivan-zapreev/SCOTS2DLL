@@ -6,22 +6,38 @@
 CND_BASEDIR=`pwd`
 CND_BUILDDIR=build
 CND_DISTDIR=dist
-# Debug configuration
-CND_PLATFORM_Debug=GNU-MacOSX
-CND_ARTIFACT_DIR_Debug=dist
-CND_ARTIFACT_NAME_Debug=libSCOTS2DLL.dylib
-CND_ARTIFACT_PATH_Debug=dist/libSCOTS2DLL.dylib
-CND_PACKAGE_DIR_Debug=dist/Debug/GNU-MacOSX/package
-CND_PACKAGE_NAME_Debug=libSCOTS2DLL.dylib.tar
-CND_PACKAGE_PATH_Debug=dist/Debug/GNU-MacOSX/package/libSCOTS2DLL.dylib.tar
-# Release configuration
-CND_PLATFORM_Release=GNU-MacOSX
-CND_ARTIFACT_DIR_Release=dist
-CND_ARTIFACT_NAME_Release=libSCOTS2DLL.dylib
-CND_ARTIFACT_PATH_Release=dist/libSCOTS2DLL.dylib
-CND_PACKAGE_DIR_Release=dist/Release/GNU-MacOSX/package
-CND_PACKAGE_NAME_Release=libSCOTS2DLL.dylib.tar
-CND_PACKAGE_PATH_Release=dist/Release/GNU-MacOSX/package/libSCOTS2DLL.dylib.tar
+# Release_Linux configuration
+CND_PLATFORM_Release_Linux=GNU-Linux
+CND_ARTIFACT_DIR_Release_Linux=dist
+CND_ARTIFACT_NAME_Release_Linux=libSCOTS2DLL.so
+CND_ARTIFACT_PATH_Release_Linux=dist/libSCOTS2DLL.so
+CND_PACKAGE_DIR_Release_Linux=dist/Release_Linux/GNU-Linux/package
+CND_PACKAGE_NAME_Release_Linux=libSCOTS2DLL.so.tar
+CND_PACKAGE_PATH_Release_Linux=dist/Release_Linux/GNU-Linux/package/libSCOTS2DLL.so.tar
+# Debug_Linux configuration
+CND_PLATFORM_Debug_Linux=GNU-Linux
+CND_ARTIFACT_DIR_Debug_Linux=dist
+CND_ARTIFACT_NAME_Debug_Linux=libSCOTS2DLL.so
+CND_ARTIFACT_PATH_Debug_Linux=dist/libSCOTS2DLL.so
+CND_PACKAGE_DIR_Debug_Linux=dist/Debug_Linux/GNU-Linux/package
+CND_PACKAGE_NAME_Debug_Linux=libSCOTS2DLL.so.tar
+CND_PACKAGE_PATH_Debug_Linux=dist/Debug_Linux/GNU-Linux/package/libSCOTS2DLL.so.tar
+# Release_Mac configuration
+CND_PLATFORM_Release_Mac=GNU-Linux
+CND_ARTIFACT_DIR_Release_Mac=dist
+CND_ARTIFACT_NAME_Release_Mac=libSCOTS2DLL.so
+CND_ARTIFACT_PATH_Release_Mac=dist/libSCOTS2DLL.so
+CND_PACKAGE_DIR_Release_Mac=dist/Release_Mac/GNU-Linux/package
+CND_PACKAGE_NAME_Release_Mac=libSCOTS2DLL.so.tar
+CND_PACKAGE_PATH_Release_Mac=dist/Release_Mac/GNU-Linux/package/libSCOTS2DLL.so.tar
+# Debug_Mac configuration
+CND_PLATFORM_Debug_Mac=GNU-Linux
+CND_ARTIFACT_DIR_Debug_Mac=dist
+CND_ARTIFACT_NAME_Debug_Mac=libSCOTS2DLL.so
+CND_ARTIFACT_PATH_Debug_Mac=dist/libSCOTS2DLL.so
+CND_PACKAGE_DIR_Debug_Mac=dist/Debug_Mac/GNU-Linux/package
+CND_PACKAGE_NAME_Debug_Mac=libSCOTS2DLL.so.tar
+CND_PACKAGE_PATH_Debug_Mac=dist/Debug_Mac/GNU-Linux/package/libSCOTS2DLL.so.tar
 #
 # include compiler specific variables
 #

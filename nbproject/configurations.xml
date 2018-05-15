@@ -46,7 +46,80 @@
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
-    <conf name="Debug" type="2">
+    <conf name="Release_Linux" type="2" platformSpecific="true">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <platform>2</platform>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>true</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <cTool>
+          <developmentMode>5</developmentMode>
+        </cTool>
+        <ccTool>
+          <developmentMode>5</developmentMode>
+          <architecture>2</architecture>
+          <standard>8</standard>
+          <incDir>
+            <pElem>/usr/local/jdk1.8.0_171/include/linux/</pElem>
+            <pElem>/usr/local/jdk1.8.0_171/include/</pElem>
+            <pElem>/usr/local/include</pElem>
+            <pElem>inc</pElem>
+            <pElem>../SCOTS2JNI/target/jni</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../Scots2C/src/optdet</pElem>
+          </incDir>
+          <commandLine>-m64 -O3</commandLine>
+          <warningLevel>3</warningLevel>
+        </ccTool>
+        <fortranCompilerTool>
+          <developmentMode>5</developmentMode>
+        </fortranCompilerTool>
+        <asmTool>
+          <developmentMode>5</developmentMode>
+        </asmTool>
+        <linkerTool>
+          <output>${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}</output>
+          <linkerAddLib>
+            <pElem>/usr/local/lib</pElem>
+          </linkerAddLib>
+          <commandLine>-m64 -lcudd -O3 -lgsl</commandLine>
+        </linkerTool>
+      </compileType>
+      <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/data_source.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/error_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/fitness_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/info_logger.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/jni_throw.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/random_hypercube.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/sample_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/scaled_ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/var_bisector.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
+      </item>
+    </conf>
+    <conf name="Debug_Linux" type="2">
       <toolsSet>
         <compilerSet>default</compilerSet>
         <dependencyChecking>true</dependencyChecking>
@@ -56,15 +129,14 @@
         <ccTool>
           <standard>8</standard>
           <incDir>
+            <pElem>/usr/local/jdk1.8.0_171/include/linux</pElem>
+            <pElem>/usr/local/jdk1.8.0_171/include</pElem>
             <pElem>/usr/local/include</pElem>
-            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include</pElem>
-            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include/darwin</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/ext/SCOTSv0.2</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/ext/SCOTSv0.2/src</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/ext/SCOTSv0.2/utils</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/SCOTS2JNI/target/jni</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/src/optdet</pElem>
             <pElem>inc</pElem>
+            <pElem>../SCOTS2JNI/target/jni</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../Scots2C/src/optdet</pElem>
           </incDir>
           <commandLine>-m64</commandLine>
         </ccTool>
@@ -104,11 +176,12 @@
       <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
       </item>
     </conf>
-    <conf name="Release" type="2">
+    <conf name="Release_Mac" type="2" platformSpecific="true">
       <toolsSet>
         <compilerSet>default</compilerSet>
+        <platform>2</platform>
         <dependencyChecking>true</dependencyChecking>
-        <rebuildPropChanged>false</rebuildPropChanged>
+        <rebuildPropChanged>true</rebuildPropChanged>
       </toolsSet>
       <compileType>
         <cTool>
@@ -119,19 +192,17 @@
           <architecture>2</architecture>
           <standard>8</standard>
           <incDir>
+            <pElem>/usr/local/jdk1.8.0_171/include/linux/</pElem>
+            <pElem>/usr/local/jdk1.8.0_171/include/</pElem>
             <pElem>/usr/local/include</pElem>
-            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include</pElem>
-            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include/darwin</pElem>
-            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/include</pElem>
-            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/include/darwin</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/ext/SCOTSv0.2</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/ext/SCOTSv0.2/src</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/ext/SCOTSv0.2/utils</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/SCOTS2JNI/target/jni</pElem>
-            <pElem>/Users/izapreev/Projects/CCLR/soft/mscots2bdd/src/optdet</pElem>
             <pElem>inc</pElem>
+            <pElem>../SCOTS2JNI/target/jni</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../Scots2C/src/optdet</pElem>
           </incDir>
           <commandLine>-m64 -O3</commandLine>
+          <warningLevel>3</warningLevel>
         </ccTool>
         <fortranCompilerTool>
           <developmentMode>5</developmentMode>
@@ -145,6 +216,63 @@
             <pElem>/usr/local/lib</pElem>
           </linkerAddLib>
           <commandLine>-m64 -lcudd -O3 -lgsl</commandLine>
+        </linkerTool>
+      </compileType>
+      <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/config_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/data_source.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/error_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/fitness_computer.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/info_logger.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/jni_throw.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/random_hypercube.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/sample_data_iter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/scaled_ctrl_wrapper.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/unfit_exporter.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="inc/var_bisector.hh" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/scots2dll.cc" ex="false" tool="1" flavor2="0">
+      </item>
+    </conf>
+    <conf name="Debug_Mac" type="2">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <ccTool>
+          <standard>8</standard>
+          <incDir>
+            <pElem>/usr/local/jdk1.8.0_171/include/linux</pElem>
+            <pElem>/usr/local/jdk1.8.0_171/include</pElem>
+            <pElem>/usr/local/include</pElem>
+            <pElem>inc</pElem>
+            <pElem>../SCOTS2JNI/target/jni</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../Scots2C/src/optdet</pElem>
+          </incDir>
+          <commandLine>-m64</commandLine>
+        </ccTool>
+        <linkerTool>
+          <output>${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}</output>
+          <commandLine>-m64 -lcudd -lgsl</commandLine>
         </linkerTool>
       </compileType>
       <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
