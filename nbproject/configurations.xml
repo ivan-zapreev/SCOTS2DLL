@@ -192,8 +192,8 @@
           <architecture>2</architecture>
           <standard>8</standard>
           <incDir>
-            <pElem>/usr/local/jdk1.8.0_171/include/linux/</pElem>
-            <pElem>/usr/local/jdk1.8.0_171/include/</pElem>
+            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include/darwin</pElem>
+            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include</pElem>
             <pElem>/usr/local/include</pElem>
             <pElem>inc</pElem>
             <pElem>../SCOTS2JNI/target/jni</pElem>
@@ -259,8 +259,8 @@
         <ccTool>
           <standard>8</standard>
           <incDir>
-            <pElem>/usr/local/jdk1.8.0_171/include/linux</pElem>
-            <pElem>/usr/local/jdk1.8.0_171/include</pElem>
+            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include/darwin</pElem>
+            <pElem>/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include</pElem>
             <pElem>/usr/local/include</pElem>
             <pElem>inc</pElem>
             <pElem>../SCOTS2JNI/target/jni</pElem>
