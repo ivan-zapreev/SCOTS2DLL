@@ -52,7 +52,7 @@ FFLAGS=
 ASFLAGS=
 
 # Link Libraries and Options
-LDLIBSOPTIONS=-L/usr/local/lib
+LDLIBSOPTIONS=-L/usr/local/lib -lcudd -lgsl
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
@@ -60,7 +60,7 @@ LDLIBSOPTIONS=-L/usr/local/lib
 
 ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}
-	${LINK.cc} -o ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT} ${OBJECTFILES} ${LDLIBSOPTIONS} -m64 -lcudd -O3 -lgsl -dynamiclib -install_name libSCOTS2DLL.${CND_DLIB_EXT} -fPIC
+	${LINK.cc} -o ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT} ${OBJECTFILES} ${LDLIBSOPTIONS} -m64 -O3 -dynamiclib -install_name libSCOTS2DLL.${CND_DLIB_EXT} -fPIC
 
 ${OBJECTDIR}/src/scots2dll.o: src/scots2dll.cc nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}/src
