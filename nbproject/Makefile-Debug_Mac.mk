@@ -21,8 +21,8 @@ FC=gfortran
 AS=as
 
 # Macros
-CND_PLATFORM=GNU-MacOSX
-CND_DLIB_EXT=dylib
+CND_PLATFORM=GNU-Linux
+CND_DLIB_EXT=so
 CND_CONF=Debug_Mac
 CND_DISTDIR=dist
 CND_BUILDDIR=build
@@ -60,7 +60,7 @@ LDLIBSOPTIONS=
 
 ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}
-	${LINK.cc} -o ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT} ${OBJECTFILES} ${LDLIBSOPTIONS} -m64 -lcudd -lgsl -dynamiclib -install_name libSCOTS2DLL.${CND_DLIB_EXT} -fPIC
+	${LINK.cc} -o ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT} ${OBJECTFILES} ${LDLIBSOPTIONS} -m64 -lcudd -lgsl -shared -fPIC
 
 ${OBJECTDIR}/src/scots2dll.o: src/scots2dll.cc
 	${MKDIR} -p ${OBJECTDIR}/src

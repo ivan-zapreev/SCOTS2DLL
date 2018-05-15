@@ -85,7 +85,13 @@
           <linkerAddLib>
             <pElem>/usr/local/lib</pElem>
           </linkerAddLib>
-          <commandLine>-m64 -lcudd -O3 -lgsl</commandLine>
+          <linkerDepDynSerchKind>3</linkerDepDynSerchKind>
+          <linkerCopySharedLibs>true</linkerCopySharedLibs>
+          <linkerLibItems>
+            <linkerLibLibItem>cudd</linkerLibLibItem>
+            <linkerLibFileItem>/usr/local/lib/libgsl.a</linkerLibFileItem>
+          </linkerLibItems>
+          <commandLine>-m64 -O3</commandLine>
         </linkerTool>
       </compileType>
       <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
@@ -142,7 +148,11 @@
         </ccTool>
         <linkerTool>
           <output>${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}</output>
-          <commandLine>-m64 -lcudd -lgsl</commandLine>
+          <linkerLibItems>
+            <linkerLibLibItem>cudd</linkerLibLibItem>
+            <linkerLibFileItem>/usr/local/lib/libgsl.a</linkerLibFileItem>
+          </linkerLibItems>
+          <commandLine>-m64</commandLine>
         </linkerTool>
       </compileType>
       <item path="inc/bdd_data_iter.hh" ex="false" tool="3" flavor2="0">
