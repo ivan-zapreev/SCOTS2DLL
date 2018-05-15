@@ -67,9 +67,9 @@
             <pElem>/usr/local/include</pElem>
             <pElem>inc</pElem>
             <pElem>../SCOTS2JNI/target/jni</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
-            <pElem>../Scots2C/src/optdet</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../SCOTS2C/src/optdet</pElem>
           </incDir>
           <commandLine>-m64 -O3</commandLine>
           <warningLevel>3</warningLevel>
@@ -134,9 +134,9 @@
             <pElem>/usr/local/include</pElem>
             <pElem>inc</pElem>
             <pElem>../SCOTS2JNI/target/jni</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
-            <pElem>../Scots2C/src/optdet</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../SCOTS2C/src/optdet</pElem>
           </incDir>
           <commandLine>-m64</commandLine>
         </ccTool>
@@ -179,7 +179,7 @@
     <conf name="Release_Mac" type="2" platformSpecific="true">
       <toolsSet>
         <compilerSet>default</compilerSet>
-        <platform>2</platform>
+        <platform>4</platform>
         <dependencyChecking>true</dependencyChecking>
         <rebuildPropChanged>true</rebuildPropChanged>
       </toolsSet>
@@ -197,9 +197,9 @@
             <pElem>/usr/local/include</pElem>
             <pElem>inc</pElem>
             <pElem>../SCOTS2JNI/target/jni</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
-            <pElem>../Scots2C/src/optdet</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../SCOTS2C/src/optdet</pElem>
           </incDir>
           <commandLine>-m64 -O3</commandLine>
           <warningLevel>3</warningLevel>
@@ -264,9 +264,9 @@
             <pElem>/usr/local/include</pElem>
             <pElem>inc</pElem>
             <pElem>../SCOTS2JNI/target/jni</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/src</pElem>
-            <pElem>../Scots2C/ext/SCOTSv2.0/utils</pElem>
-            <pElem>../Scots2C/src/optdet</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/src</pElem>
+            <pElem>../SCOTS2C/ext/SCOTSv2.0/utils</pElem>
+            <pElem>../SCOTS2C/src/optdet</pElem>
           </incDir>
           <commandLine>-m64</commandLine>
         </ccTool>

@@ -65,7 +65,7 @@ ${CND_DISTDIR}/libSCOTS2DLL.${CND_DLIB_EXT}: ${OBJECTFILES}
 ${OBJECTDIR}/src/scots2dll.o: src/scots2dll.cc
 	${MKDIR} -p ${OBJECTDIR}/src
 	${RM} "$@.d"
-	$(COMPILE.cc) -g -I/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include/darwin -I/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include -I/usr/local/include -Iinc -I../SCOTS2JNI/target/jni -I../Scots2C/ext/SCOTSv2.0/src -I../Scots2C/ext/SCOTSv2.0/utils -I../Scots2C/src/optdet -std=c++11 -fPIC  -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/src/scots2dll.o src/scots2dll.cc
+	$(COMPILE.cc) -g -I/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include/darwin -I/Library/Java/JavaVirtualMachines/jdk1.8.0_151.jdk/Contents/Home/include -I/usr/local/include -Iinc -I../SCOTS2JNI/target/jni -I../SCOTS2C/ext/SCOTSv2.0/src -I../SCOTS2C/ext/SCOTSv2.0/utils -I../SCOTS2C/src/optdet -std=c++11 -fPIC  -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/src/scots2dll.o src/scots2dll.cc
 
 # Subprojects
 .build-subprojects:
