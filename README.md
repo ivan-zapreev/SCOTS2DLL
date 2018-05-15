@@ -1,6 +1,6 @@
 # **Introduction**
 
-This software is a back-end (JNI/C++ based) part of the `SCOTS2SR` (<https://github.com/ivan-zapreev/SCOTS2SR>) tool for generating functional representations of `SCOTSv2.0` (<https://gitlab.lrz.de/matthias/SCOTSv0.2>) BDD controllers.
+This software is a back-end (JNI/C++11 based) part of the `SCOTS2SR` (<https://github.com/ivan-zapreev/SCOTS2SR>) tool for generating functional representations of `SCOTSv2.0` (<https://gitlab.lrz.de/matthias/SCOTSv0.2>) BDD controllers.
 
 # **Dependencies**
 
