@@ -1,8 +1,8 @@
-#Introduction
+# **Introduction**
 
 This software is a back-end (JNI/C++ based) part of the `SCOTS2SR` (<https://github.com/ivan-zapreev/SCOTS2SR>) tool for generating functional representations of `SCOTSv2.0` (<https://gitlab.lrz.de/matthias/SCOTSv0.2>) BDD controllers.
 
-#Dependencies
+# **Dependencies**
 
 This project is dependent on:
 
@@ -10,7 +10,7 @@ This project is dependent on:
 2. Tools for BDD controller determinization - `SCOTS2C` (<https://github.com/ivan-zapreev/SCOTS2C>)
 3. JNI project for `SCOTS2SR ` - `SCOTS2JNI` (<https://github.com/ivan-zapreev/SCOTS2JNI>)
 
-#Required tools
+# **Required tools**
 
 In order to build the project one requires to have:
 
@@ -20,7 +20,7 @@ In order to build the project one requires to have:
 3. GNU Compiler Collection (GCC/G++) 5.5.0 or later
 4. XCode SDK with c++ version 4.2.1 or later (on Max OS X)
 
-#Build instructions
+# **Build instructions**
 
 Before the project can be build `SCOTS2C` and `SCOTS2JNI` are to be downloaded and build in the folders next the the folder containing this project. The directory structure is assumed to be as follows:
 
@@ -50,6 +50,6 @@ Further one requires to
 8. Close the project properties dialog
 3. Run project `build` from the Netbeans IDE
 
-#Resulting binary
+# **Resulting binary**
 
 Building the project results in a dynamic library generated into `./dist`. Depending on the platform this will be either `libSCOTS2DLL.dylib` (on Max OS X) or `libSCOTS2DLL.so` (on Linux/Ubuntu). The library is to be loaded from `SCOTS2SR`'s Java interface on its start-up.
