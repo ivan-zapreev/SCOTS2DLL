@@ -6,7 +6,7 @@
 
 ## **Introduction**
 
-This software is a back-end (JNI/C++11 based) part of the `SCOTS2SR` (<https://github.com/ivan-zapreev/SCOTS2SR>) tool for generating functional representations of `SCOTSv2.0` (<https://gitlab.lrz.de/matthias/SCOTSv0.2>) BDD controllers.
+This software is a backend (JNI/C++11 based) part of the `SCOTS2SR` (<https://github.com/ivan-zapreev/SCOTS2SR>) tool for generating functional representations of `SCOTSv2.0` (<https://gitlab.lrz.de/matthias/SCOTSv0.2>) BDD controllers.
 
 ## **Dependencies**
 
@@ -21,7 +21,7 @@ This project is dependent on:
 In order to build the project one requires to have:
 
 1. Netbeans version 8.2 or later in its version containing: Java/JDK and C++
-2. Java version 1.8 or later
+2. JDK version 1.8 or later
 3. C++ version 11 or later
 3. GNU Compiler Collection (GCC/G++) 5.5.0 or later
 4. XCode SDK with c++ version 4.2.1 or later (on Max OS X)
