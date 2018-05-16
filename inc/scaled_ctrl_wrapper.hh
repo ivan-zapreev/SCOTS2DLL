@@ -93,10 +93,12 @@ namespace tud {
 
                             //Update the min/max values if the input is good
                             for (int idx = 0; idx < m_wrapper.get_is_dim(); ++idx) {
-                                min_max_data[idx].first =
-                                        min(min_max_data[idx].first, input[idx]);
-                                min_max_data[idx].second =
-                                        max(min_max_data[idx].second, input[idx]);
+                                if (!isnan(input[idx]) && !isinf(input[idx])) {
+                                    min_max_data[idx].first =
+                                            min(min_max_data[idx].first, input[idx]);
+                                    min_max_data[idx].second =
+                                            max(min_max_data[idx].second, input[idx]);
+                                }
                             }
 
                             //Skip on the inputs

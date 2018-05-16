@@ -62,12 +62,23 @@ namespace tud {
                      * @param delta_err the error to be computed
                      * @return if true then the error could be computed, otherwise false
                      */
-                    template<typename IPTS_ITER_TYPE>
                     bool min_state_error(const double * ind_input,
-                            IPTS_ITER_TYPE & ipts_iter, double & delta_err) {
+                            sample_data_iter & ipts_iter, double & delta_err) {
                         //Initialize the error
                         delta_err = DBL_MAX;
 
+                        //Check that the vector has only proper inputs
+                        for (int idx = 0; idx < m_is_dim; ++idx) {
+                            //If the individual's input is not valid then
+                            if (isnan(ind_input[idx]) || isinf(ind_input[idx])) {
+                                //Skip the inputs data
+                                ipts_iter.skip_inputs_data();
+                                //And return false
+                                return false;
+                            }
+                        }
+
+                        //If the input is good then compute its error
                         //Iterate over the inputs and compute the minimum 
                         //(over all controller's state inputs) maximum 
                         //(over all input vector dimensions) delta error
@@ -82,14 +93,7 @@ namespace tud {
                             //Compute the delta error
                             delta_err = min(delta_err, max_dof_err);
                         }
-
-                        //Check that the delta error could be computed
-                        bool is_good = true;
-                        if (isnan(delta_err) || isinf(delta_err)) {
-                            LOG("ERROR: Bad individual, one of the inputs is NAN or INF");
-                            is_good = false;
-                        }
-                        return is_good;
+                        return true;
                     }
 
                 public:
